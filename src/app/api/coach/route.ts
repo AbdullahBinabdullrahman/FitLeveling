@@ -10,8 +10,10 @@ import { builtinReply, extractResponseText } from "@/lib/coach";
 import {
   coachApiKey,
   getCoachSettings,
-  openaiRequest,
+  providerRequest,
+  defaultCoachModel,
 } from "@/lib/coach-server";
+import { isAIProvider, normalizeCoachModel } from "@/lib/coach-provider";
 export async function POST(request: NextRequest) {
   try {
     const userId = await requireUser();
@@ -36,8 +38,14 @@ export async function POST(request: NextRequest) {
         reply: builtinReply(message, game),
         provider: "builtin",
       });
-    const apiKey = coachApiKey(settings);
-    const model = settings.model || process.env.OPENAI_MODEL;
+    if (!isAIProvider(settings.provider))
+      throw new Error("Choose a supported provider in coach settings");
+    const provider = settings.provider;
+    const apiKey = coachApiKey(settings, provider);
+    const model = normalizeCoachModel(
+      provider,
+      settings.model || defaultCoachModel(provider),
+    );
     if (!model) throw new Error("Choose a model in coach settings");
     const reserved = await db
       .update(coachSettings)
@@ -71,7 +79,7 @@ export async function POST(request: NextRequest) {
           claimed: q.claimed,
         })),
     };
-    const response = await openaiRequest("responses", apiKey, {
+    const response = await providerRequest(provider, "responses", apiKey, {
       model,
       store: false,
       max_output_tokens: 1800,
@@ -85,7 +93,7 @@ export async function POST(request: NextRequest) {
       throw new Error(
         "The model returned no text. Try another text model or send again.",
       );
-    return NextResponse.json({ reply, provider: "openai", model });
+    return NextResponse.json({ reply, provider, model });
   } catch (error) {
     return fail(error);
   }

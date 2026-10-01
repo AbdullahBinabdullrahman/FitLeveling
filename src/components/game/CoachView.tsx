@@ -8,15 +8,26 @@ import {
   Settings2,
   Sparkles,
 } from "lucide-react";
+import {
+  AI_PROVIDERS,
+  isAIProvider,
+  normalizeCoachModel,
+  type CoachMode,
+  type AIProvider,
+} from "@/lib/coach-provider";
 import type { GameData } from "@/lib/game";
 import Character from "./Character";
 
 type Settings = {
-  provider: "builtin" | "openai";
+  provider: CoachMode;
   model: string;
   hasPersonalKey: boolean;
   hasServerKey: boolean;
   defaultModel: string;
+  serverKeys: Record<AIProvider, boolean>;
+  defaultModels: Record<AIProvider, string>;
+  suggestedProvider: AIProvider | null;
+  keyNeedsReconnect: boolean;
 };
 type Message = { role: "user" | "assistant"; content: string };
 async function request<T>(
@@ -36,7 +47,7 @@ async function request<T>(
 }
 export default function CoachView({ game }: { game: GameData }) {
   const [settings, setSettings] = useState<Settings | null>(null);
-  const [provider, setProvider] = useState<"builtin" | "openai">("builtin");
+  const [provider, setProvider] = useState<CoachMode>("builtin");
   const [model, setModel] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [models, setModels] = useState<string[]>([]);
@@ -50,8 +61,23 @@ export default function CoachView({ game }: { game: GameData }) {
   const bottom = useRef<HTMLDivElement>(null);
   const acceptSettings = (next: Settings) => {
     setSettings(next);
-    setProvider(next.provider);
-    setModel(next.model || next.defaultModel);
+    const selected =
+      isAIProvider(next.provider) && next.suggestedProvider
+        ? next.suggestedProvider
+        : next.provider;
+    setProvider(selected);
+    setModel(
+      isAIProvider(selected)
+        ? normalizeCoachModel(
+            selected,
+            next.model || next.defaultModels[selected],
+          )
+        : next.model,
+    );
+    if (selected !== next.provider)
+      setNotice(
+        `Your saved key belongs to ${AI_PROVIDERS[selected as AIProvider].label}. Load models and save to correct the provider.`,
+      );
   };
   useEffect(() => {
     request<Settings>("/settings")
@@ -114,25 +140,21 @@ export default function CoachView({ game }: { game: GameData }) {
     }
   }
   async function discover() {
+    if (!isAIProvider(provider)) return;
     setSaving(true);
     setError("");
     setNotice("");
     try {
-      if (apiKey.trim()) {
-        const next = await request<Settings>("/settings", "PATCH", {
-          provider: settings?.provider ?? "builtin",
-          model: settings?.model ?? "",
-          apiKey: apiKey.trim(),
-        });
-        setSettings(next);
-        setApiKey("");
-      }
-      const next = await request<{ models: string[] }>("/models");
+      const next = await request<{ models: string[] }>("/models", "POST", {
+        provider,
+        ...(apiKey.trim() ? { apiKey: apiKey.trim() } : {}),
+      });
       setModels(next.models);
+      if (model) setModel(normalizeCoachModel(provider, model));
       setNotice(
         next.models.length
-          ? "Key ready. Choose a text model, then save to connect."
-          : "No text models found. You can enter a model ID manually.",
+          ? "Key verified. Choose a model, then save to connect."
+          : "No supported text models found for this account.",
       );
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not discover models");
@@ -140,7 +162,12 @@ export default function CoachView({ game }: { game: GameData }) {
       setSaving(false);
     }
   }
-  const connected = settings?.provider === "openai";
+  const selectedProvider = isAIProvider(provider) ? provider : "openai";
+  const providerLabel = AI_PROVIDERS[selectedProvider].label;
+  const hasServerKey = settings?.serverKeys[selectedProvider] ?? false;
+  const activeProvider =
+    settings && isAIProvider(settings.provider) ? settings.provider : null;
+  const connected = Boolean(activeProvider);
   return (
     <div className="screen-enter">
       <div className="section-heading">
@@ -168,9 +195,9 @@ export default function CoachView({ game }: { game: GameData }) {
             model
           </div>
           <p className="muted text-sm">
-            Use the built-in coach, or connect OpenAI for conversational
-            coaching. OpenAI receives your chat and a summary of your game
-            progress. API usage is billed to the connected key.
+            Use the built-in coach, or connect OpenAI or Groq for conversational
+            coaching. Your selected provider receives your chat and a summary of
+            your game progress. API usage is billed to the connected key.
           </p>
           <div className="grid gap-4 md:grid-cols-2">
             <label className="field">
@@ -178,15 +205,30 @@ export default function CoachView({ game }: { game: GameData }) {
               <select
                 value={provider}
                 disabled={saving || thinking}
-                onChange={(e) => setProvider(e.target.value as typeof provider)}
+                onChange={(e) => {
+                  const selected = e.target.value as CoachMode;
+                  setProvider(selected);
+                  setModels([]);
+                  setNotice("");
+                  setModel(
+                    settings?.provider === selected
+                      ? settings.model
+                      : isAIProvider(selected)
+                        ? (settings?.defaultModels[selected] ?? "")
+                        : "",
+                  );
+                }}
               >
                 <option value="builtin">
                   Built-in companion · No API key needed
                 </option>
                 <option value="openai">OpenAI · Your choice of model</option>
+                <option value="groq">
+                  Groq · GPT OSS and other text models
+                </option>
               </select>
             </label>
-            {provider === "openai" && (
+            {isAIProvider(provider) && (
               <label className="field">
                 Model ID
                 <input
@@ -204,10 +246,10 @@ export default function CoachView({ game }: { game: GameData }) {
               </label>
             )}
           </div>
-          {provider === "openai" && (
+          {isAIProvider(provider) && (
             <>
               <label className="field">
-                OpenAI API key
+                {providerLabel} API key
                 <input
                   type="password"
                   autoComplete="off"
@@ -217,7 +259,7 @@ export default function CoachView({ game }: { game: GameData }) {
                   placeholder={
                     settings?.hasPersonalKey
                       ? "Personal key saved · Enter to replace"
-                      : settings?.hasServerKey
+                      : hasServerKey
                         ? "Server key available · Personal key optional"
                         : "Paste your API key"
                   }
@@ -231,7 +273,7 @@ export default function CoachView({ game }: { game: GameData }) {
                     thinking ||
                     (!apiKey.trim() &&
                       !settings?.hasPersonalKey &&
-                      !settings?.hasServerKey)
+                      !hasServerKey)
                   }
                   onClick={discover}
                 >
@@ -287,6 +329,12 @@ export default function CoachView({ game }: { game: GameData }) {
               </button>
             )}
           </div>
+          {settings?.keyNeedsReconnect && (
+            <p role="status" className="text-sm text-amber-200">
+              Reconnect your API key; the saved key cannot be decrypted after a
+              server configuration change.
+            </p>
+          )}
           {notice && (
             <p role="status" className="text-sm text-teal-300">
               {notice}
@@ -338,7 +386,9 @@ export default function CoachView({ game }: { game: GameData }) {
           </div>
           <div className="coach-mode">
             <span className={`status-dot ${connected ? "ai" : ""}`} />
-            {connected ? `OpenAI · ${settings.model}` : "Built-in companion"}
+            {connected
+              ? `${AI_PROVIDERS[activeProvider!].label} · ${settings?.model}`
+              : "Built-in companion"}
           </div>
         </aside>
         <section className="chat-card">

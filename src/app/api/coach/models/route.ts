@@ -1,27 +1,48 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { requireUser } from "@/lib/auth";
 import { fail } from "@/lib/http";
 import {
   coachApiKey,
   getCoachSettings,
-  openaiRequest,
+  listCoachModels,
 } from "@/lib/coach-server";
-export async function GET() {
+import { type AIProvider } from "@/lib/coach-provider";
+
+export async function GET(request: NextRequest) {
   try {
     const settings = await getCoachSettings(await requireUser());
-    const result = (await openaiRequest("models", coachApiKey(settings))) as {
-      data?: { id: string }[];
-    };
-    // Discovery reflects account access, not a hardcoded model catalogue.
+    const selected =
+      request.nextUrl.searchParams.get("provider") ??
+      settings?.provider ??
+      "openai";
+    const provider: AIProvider =
+      selected === "builtin"
+        ? "openai"
+        : z.enum(["openai", "groq"]).parse(selected);
     return NextResponse.json({
-      models: (result.data ?? [])
-        .map((m) => m.id)
-        .filter(
-          (id) =>
-            /^(gpt-|o[1-9])/.test(id) &&
-            !/audio|realtime|transcri|tts|image|search|codex/.test(id),
-        )
-        .sort(),
+      provider,
+      models: await listCoachModels(provider, coachApiKey(settings, provider)),
+    });
+  } catch (error) {
+    return fail(error);
+  }
+}
+export async function POST(request: NextRequest) {
+  try {
+    const userId = await requireUser();
+    const input = z
+      .object({
+        provider: z.enum(["openai", "groq"]),
+        apiKey: z.string().trim().min(10).max(512).optional(),
+      })
+      .parse(await request.json());
+    const settings = await getCoachSettings(userId);
+    const key = input.apiKey ?? coachApiKey(settings, input.provider);
+    // Test a draft key without replacing a working saved credential.
+    return NextResponse.json({
+      provider: input.provider,
+      models: await listCoachModels(input.provider, key),
     });
   } catch (error) {
     return fail(error);
