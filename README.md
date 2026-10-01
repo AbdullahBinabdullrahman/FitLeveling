@@ -15,7 +15,7 @@ Personal workout RPG PWA backed by Supabase PostgreSQL, Drizzle, and Next.js. It
 docker compose up -d --build
 ```
 
-The `migrate` service applies committed SQL migrations and seeds the workouts/rewards before the web service starts. Open `http://localhost:3000`, create an account using `REGISTRATION_CODE`, then sign in. Supabase is the database; Docker does not create a local PostgreSQL instance.
+The `migrate` service applies committed SQL migrations and seeds the workouts/rewards before the web service starts. Open `http://localhost:3000` and sign in with your seeded account, or create an account using `REGISTRATION_CODE`. Supabase is the database; Docker does not create a local PostgreSQL instance.
 
 ## Local development
 
@@ -26,6 +26,8 @@ npm run db:migrate
 npm run db:seed
 npm run dev
 ```
+
+To seed an initial account, set `SEED_USER_EMAIL`, `SEED_USER_NAME`, and `SEED_USER_PASSWORD` (at least 10 characters) in `.env` before running `npm run db:seed`. The seed creates the user and profile together and preserves existing accounts and passwords on subsequent runs. Leave the email and password unset to seed only workouts and rewards.
 
 The seed is safe to run again. Do not commit `.env` or expose the database password in client variables.
 
