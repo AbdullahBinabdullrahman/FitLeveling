@@ -43,5 +43,21 @@ npm run build
 
 - InBody values must be confirmed manually. A photo/PDF can be stored privately when Supabase Storage is configured; OCR extraction is not implemented yet.
 - The PWA has an offline shell, but workout set writes require a connection. Avoid assuming a set was saved until the UI confirms it.
-- Nutrition entries do not currently award XP. Weekly mission bonuses and achievement definitions remain to be implemented.
+- Nutrition XP is awarded by claiming completed daily and weekly check-in quests. Logging alone does not automatically collect the reward.
 - The calorie estimate uses Mifflin-St Jeor and an activity multiplier, then a configurable goal adjustment. It is a proposal that requires explicit acceptance. It does not automatically calibrate from intake/weight trends yet.
+
+## Companion and quests
+
+The **Hero** screen lets each user name a companion, choose a Vanguard, Ranger, or Mystic appearance, select an energy color, and preview animations. Hunter capes unlock at level 3, orbit halos at level 5, and star crowns at level 10. Character settings are stored in PostgreSQL. Disable animations in Hero or use your device’s reduced-motion preference.
+
+**Quests** includes a daily nutrition check-in, weekly training/nutrition/weight challenges, and lifetime workout achievements. The weekly Iron Colossus raid requires workouts on three different days. Weeks start Monday in the profile timezone (Asia/Riyadh by default). Claiming a completed quest awards XP and coins through the existing ledgers, including level-up coin bonuses. Claims are serialized with workout progression and can only be collected once per applicable period. Recovery days never deduct progress.
+
+Workout logging includes saved-set progress and a configurable rest timer. Completing a mission shows earned XP, coins, personal records, and level-ups.
+
+## Optional AI coach
+
+**Coach** works immediately with a built-in companion using preset guidance and verified game progress. In **AI settings**, select OpenAI, add a personal API key, load available models (or enter a Responses-compatible text model ID), and save. You can also configure `OPENAI_API_KEY` and `OPENAI_MODEL` on the server. Users can remove their personal key and switch back to built-in mode.
+
+Personal keys are encrypted with AES-256-GCM using a key derived from `SESSION_SECRET`; changing that secret requires reconnecting saved keys. Saved keys are never returned to the client. OpenAI requests send chat messages and a game-progress summary, set `store: false`, and have a timeout and per-user cooldown. API usage is billed to the connected API account. Chat history stays in memory for the current Coach screen and is cleared when leaving it. AI suggestions do not modify plans, targets, quests, or balances.
+
+The integration uses the [OpenAI Responses API](https://developers.openai.com/api/docs/guides/text) and discovers model IDs through the [Models API](https://developers.openai.com/api/reference/resources/models/methods/list). Availability and suitability depend on your API account and selected model.

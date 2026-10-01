@@ -17,3 +17,18 @@ export const weights = pgTable('body_weights', { id: id(), userId: uuid('user_id
 export const nutrition = pgTable('nutrition_logs', { id: id(), userId: uuid('user_id').references(() => users.id).notNull(), day: date('day').notNull(), calories: integer('calories').notNull(), proteinG: integer('protein_g').notNull(), createdAt: created() }, t => [uniqueIndex('nutrition_user_day').on(t.userId, t.day)]);
 export const inbodyScans = pgTable('inbody_scans', { id: id(), userId: uuid('user_id').references(() => users.id).notNull(), measuredAt: date('measured_at').notNull(), weightKg: numeric('weight_kg').notNull(), bodyFatPercent: numeric('body_fat_percent'), skeletalMuscleKg: numeric('skeletal_muscle_kg'), fatMassKg: numeric('fat_mass_kg'), measuredBmr: integer('measured_bmr'), attachmentKey: text('attachment_key'), createdAt: created() });
 export const targetVersions = pgTable('target_versions', { id: id(), userId: uuid('user_id').references(() => users.id).notNull(), calories: integer('calories').notNull(), proteinMin: integer('protein_min').notNull(), proteinMax: integer('protein_max').notNull(), method: text('method').notNull(), inputs: jsonb('inputs').notNull(), effectiveAt: created() });
+export const characters = pgTable('characters', {
+  userId: uuid('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+  name: text('name').default('Nova').notNull(),
+  archetype: text('archetype').default('vanguard').notNull(),
+  color: text('color').default('mint').notNull(),
+  accessory: text('accessory').default('none').notNull(),
+  animations: boolean('animations').default(true).notNull(),
+});
+export const coachSettings = pgTable('coach_settings', {
+  userId: uuid('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+  provider: text('provider').default('builtin').notNull(),
+  model: text('model').default('').notNull(),
+  encryptedApiKey: text('encrypted_api_key'),
+  lastRequestAt: timestamp('last_request_at', { withTimezone: true }),
+});

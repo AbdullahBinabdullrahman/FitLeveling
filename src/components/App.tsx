@@ -1,31 +1,1282 @@
-'use client';
-import { useEffect, useState } from 'react';
-import { Activity, Dumbbell, Gift, House, UserRound, TrendingUp, Flame, Coins, Zap } from 'lucide-react';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip } from 'recharts';
-type User={id:string;name:string;email:string};type Profile={heightCm:string|null;currentWeightKg:string|null;startingWeightKg:string|null;birthYear:number|null;sexForEstimate:string|null;activityFactor:string|null;goal:string|null;calorieTarget:number;proteinMin:number;proteinMax:number;level:number;lifetimeXp:number;coins:number};
-type Plan={templateId:string;templateName:string;exerciseId:string;exerciseName:string;position:number;sets:number;repMin:number;repMax:number};type Workout={plan:Plan[];history:{id:string;templateId:string;completedAt:string}[];profile:Profile;active:{id:string;templateId:string}|null;activeSets:{exerciseId:string;setNumber:number;weightKg:string;reps:number}[];past:{exerciseId:string;weightKg:string;reps:number}[]};
-type Scan={id:string;measuredAt:string;weightKg:string;bodyFatPercent:string|null;skeletalMuscleKg:string|null;attachmentKey:string|null};type Weight={weightKg:string;measuredAt:string};type Reward={id:string;name:string;cost:number};
-async function api<T>(path:string,method='GET',body?:unknown):Promise<T>{const r=await fetch('/api/'+path,{method,headers:{'Content-Type':'application/json'},body:body?JSON.stringify(body):undefined});const data=await r.json();if(!r.ok)throw new Error(data.error||'Request failed');return data;}
-const levelNeeded=(l:number)=>Math.round(100*l**1.35);function levelProgress(xp:number){let l=1;while(xp>=levelNeeded(l)){xp-=levelNeeded(l);l++;}return {xp,needed:levelNeeded(l)}}
-export default function App(){const [user,setUser]=useState<User|null|undefined>(undefined),[tab,setTab]=useState('Home'),[data,setData]=useState<Workout|null>(null),[weights,setWeights]=useState<Weight[]>([]),[scans,setScans]=useState<Scan[]>([]),[rewards,setRewards]=useState<Reward[]>([]),[error,setError]=useState(''),[message,setMessage]=useState('');const [session,setSession]=useState<{id:string;templateId:string}|null>(null),[selected,setSelected]=useState<string|null>(null);
-const load=async()=>{try{const [w,wt,ib,rs]=await Promise.all([api<Workout>('workouts'),api<{weights:Weight[]}>('weight'),api<{scans:Scan[]}>('inbody'),api<{rewards:Reward[]}>('rewards')]);setData(w);setWeights(wt.weights);setScans(ib.scans);setRewards(rs.rewards);setSession(w.active);setSelected(w.active?.templateId??null);}catch(e){setError(String(e));}};
-useEffect(()=>{api<{user:User|null}>('auth').then(x=>{setUser(x.user);if(x.user)load()}).catch(()=>setUser(null));if('serviceWorker'in navigator)navigator.serviceWorker.register('/sw.js').catch(()=>{});},[]);
-const act=async(fn:()=>Promise<unknown>)=>{setError('');setMessage('');try{await fn();await load();setMessage('Saved successfully');}catch(e){setError(e instanceof Error?e.message:String(e));}};
-if(user===undefined)return <main className="p-10">Loading...</main>;
-if(!user)return <Auth onDone={u=>{setUser(u);load()}}/>;
-const profile=data?.profile;const progress=levelProgress(profile?.lifetimeXp??0);const names=[...new Set(data?.plan.map(p=>p.templateName)??[])];const completedThisWeek=data?.history.filter(h=>new Date(h.completedAt).getTime()>Date.now()-7*86400000).length??0;
-return <div className="mx-auto max-w-6xl px-4 pb-28 pt-6 md:px-8"><header className="mb-8 flex items-center justify-between"><div><div className="label text-emerald-300">THE HUNTER SYSTEM</div><h1 className="text-2xl font-black tracking-wider">LEVEL<span className="text-teal-300">UP</span></h1></div><div className="flex items-center gap-3"><span className="rounded-full bg-slate-800 px-3 py-2 text-sm">🪙 {profile?.coins??0}</span><span className="rounded-full bg-slate-800 px-3 py-2 text-sm">{user.name}</span></div></header>
-<nav className="mb-8 hidden gap-2 md:flex">{[['Home',House],['Train',Dumbbell],['Progress',TrendingUp],['Shop',Gift],['Profile',UserRound]].map(([name,Icon])=><button key={name as string} className={'navbtn flex items-center gap-2 '+(tab===name?'active':'')} onClick={()=>setTab(name as string)}><Icon size={18}/>{name as string}</button>)}</nav>
-{error&&<div className="mb-4 rounded-xl border border-red-500 bg-red-950 p-3 text-red-200">{error}</div>}{message&&<div className="mb-4 rounded-xl border border-teal-500 bg-teal-950 p-3 text-teal-100">{message}</div>}
-{tab==='Home'&&<><div className="mb-6 grid gap-5 md:grid-cols-[1.5fr_1fr]"><section className="card relative overflow-hidden"><div className="absolute right-4 top-2 text-8xl font-black text-white/5">{profile?.level??1}</div><div className="label">CURRENT STATUS</div><div className="mt-5 flex items-end gap-4"><span className="text-6xl font-black text-teal-300">{profile?.level??1}</span><div><div className="label">LEVEL</div><div className="text-xl font-bold">{profile?.level&&profile.level>=5?'Rising Hunter':'Beginner Hunter'}</div></div></div><div className="mt-8 flex justify-between text-sm"><span>XP PROGRESS</span><span>{progress.xp} / {progress.needed}</span></div><div className="mt-2 h-3 overflow-hidden rounded-full bg-slate-700"><div className="h-full bg-gradient-to-r from-teal-400 to-blue-400" style={{width:`${100*progress.xp/progress.needed}%`}}/></div></section><section className="card"><div className="label">WEEKLY MISSION</div><div className="mt-3 text-4xl font-black">{Math.min(completedThisWeek,3)}<span className="muted text-xl"> / 3 WORKOUTS</span></div><div className="mt-5 flex gap-2">{[1,2,3].map(n=><span key={n} className={'h-4 flex-1 rounded-full '+(n<=completedThisWeek?'bg-teal-400':'bg-slate-700')}/>)}</div><p className="muted mt-5">Every completed session moves you forward. Rest days are part of the plan.</p></section></div><div className="grid gap-5 md:grid-cols-3"><section className="card md:col-span-2"><div className="label">NEXT MISSION</div><h2 className="mt-3 text-3xl font-black">{session?names.find(n=>data?.plan.find(p=>p.templateId===session.templateId)?.templateName===n):names[(data?.history.length??0)%Math.max(names.length,1)]??'PUSH'} DAY</h2><p className="muted mt-2">4 exercises · about 35 minutes</p><button className="btn mt-6" onClick={()=>setTab('Train')}>START MISSION →</button></section><section className="card"><div className="label">BODY & FUEL</div><div className="mt-3 text-2xl font-bold">{weights[0]?.weightKg??profile?.currentWeightKg??'—'} <span className="muted text-base">kg</span></div><div className="muted mt-4">{profile?.calorieTarget??2200} kcal · {profile?.proteinMin??160}–{profile?.proteinMax??170} g protein</div><button className="ghost mt-5" onClick={()=>setTab('Profile')}>Update profile</button></section></div></>}
-{tab==='Train'&&<Train data={data} session={session} selected={selected} setSelected={setSelected} act={act} setSession={setSession}/>}
-{tab==='Progress'&&<Progress weights={weights} scans={scans} data={data} act={act}/>}
-{tab==='Shop'&&<Shop rewards={rewards} coins={profile?.coins??0} act={act}/>}
-{tab==='Profile'&&<ProfileView profile={profile} scans={scans} act={act} logout={async()=>{await api('auth','DELETE');setUser(null)}}/>}
-<nav className="fixed bottom-0 left-0 right-0 z-10 flex justify-around border-t border-slate-700 bg-[#0b1425]/95 p-2 pb-[max(8px,env(safe-area-inset-bottom))] backdrop-blur md:hidden">{[['Home',House],['Train',Dumbbell],['Progress',TrendingUp],['Shop',Gift],['Profile',UserRound]].map(([name,Icon])=><button key={name as string} className={'navbtn flex flex-col items-center gap-1 text-xs '+(tab===name?'active':'')} onClick={()=>setTab(name as string)}><Icon size={20}/>{name as string}</button>)}</nav></div>;
+"use client";
+import { useCallback, useEffect, useState } from "react";
+import {
+  Dumbbell,
+  Gift,
+  House,
+  UserRound,
+  TrendingUp,
+  Coins,
+  Sparkles,
+  Swords,
+  Bot,
+  ArrowRight,
+  Pause,
+  Play,
+  TimerReset,
+} from "lucide-react";
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+} from "recharts";
+import Dashboard from "./game/Dashboard";
+import CoachView from "./game/CoachView";
+import { CharacterView, Celebration, QuestsView } from "./game/GameViews";
+import type { Character, GameData, Quest, CelebrationData } from "@/lib/game";
+import { dayKey } from "@/lib/game";
+type User = { id: string; name: string; email: string };
+type Profile = {
+  heightCm: string | null;
+  currentWeightKg: string | null;
+  startingWeightKg: string | null;
+  birthYear: number | null;
+  sexForEstimate: string | null;
+  activityFactor: string | null;
+  goal: string | null;
+  calorieTarget: number;
+  proteinMin: number;
+  proteinMax: number;
+  level: number;
+  lifetimeXp: number;
+  coins: number;
+  timezone: string;
+};
+type Plan = {
+  templateId: string;
+  templateName: string;
+  exerciseId: string;
+  exerciseName: string;
+  position: number;
+  sets: number;
+  repMin: number;
+  repMax: number;
+};
+type Workout = {
+  plan: Plan[];
+  history: { id: string; templateId: string; completedAt: string }[];
+  profile: Profile;
+  active: { id: string; templateId: string } | null;
+  activeSets: {
+    exerciseId: string;
+    setNumber: number;
+    weightKg: string;
+    reps: number;
+  }[];
+  past: { exerciseId: string; weightKg: string; reps: number }[];
+};
+type Scan = {
+  id: string;
+  measuredAt: string;
+  weightKg: string;
+  bodyFatPercent: string | null;
+  skeletalMuscleKg: string | null;
+  attachmentKey: string | null;
+};
+type Weight = { weightKg: string; measuredAt: string };
+type Reward = { id: string; name: string; cost: number };
+async function api<T>(
+  path: string,
+  method = "GET",
+  body?: unknown,
+): Promise<T> {
+  const r = await fetch("/api/" + path, {
+    method,
+    headers: { "Content-Type": "application/json" },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const data = await r.json();
+  if (!r.ok) throw new Error(data.error || "Request failed");
+  return data;
 }
-function Auth({onDone}:{onDone:(u:User)=>void}){const [register,setRegister]=useState(false),[form,setForm]=useState({name:'',email:'',password:'',code:''}),[error,setError]=useState('');return <main className="mx-auto flex min-h-screen max-w-md items-center p-5"><form className="card w-full space-y-5" onSubmit={async e=>{e.preventDefault();try{const r=await api<{user:User}>('auth','POST',register?form:{email:form.email,password:form.password});onDone(r.user)}catch(e){setError(String(e))}}}><div className="label">YOUR JOURNEY STARTS HERE</div><h1 className="text-4xl font-black">LEVEL<span className="text-teal-300">UP</span></h1>{register&&<label className="field">Name<input required value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></label>}<label className="field">Email<input type="email" required value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/></label><label className="field">Password<input type="password" minLength={10} required value={form.password} onChange={e=>setForm({...form,password:e.target.value})}/></label>{register&&<label className="field">Registration code<input required value={form.code} onChange={e=>setForm({...form,code:e.target.value})}/></label>}{error&&<p className="text-red-300">{error}</p>}<button className="btn w-full">{register?'CREATE ACCOUNT':'SIGN IN'}</button><button type="button" className="muted w-full" onClick={()=>setRegister(!register)}>{register?'Have an account? Sign in':'First time? Create account'}</button></form></main>}
-function Train({data,session,selected,setSelected,act,setSession}:{data:Workout|null;session:{id:string;templateId:string}|null;selected:string|null;setSelected:(s:string)=>void;act:(fn:()=>Promise<unknown>)=>void;setSession:(s:{id:string;templateId:string}|null)=>void}){const plans=[...new Map(data?.plan.map(p=>[p.templateId,p.templateName])??[])];const chosen=selected??plans[0]?.[0];const items=data?.plan.filter(p=>p.templateId===(session?.templateId??chosen))??[];const [values,setValues]=useState<Record<string,{weightKg:number;reps:number}>>({});const [done,setDone]=useState<Record<string,boolean>>({});useEffect(()=>{if(!session)return;const next:Record<string,{weightKg:number;reps:number}>={};const finished:Record<string,boolean>={};for(const item of data?.activeSets??[]){const key=`${item.exerciseId}:${item.setNumber}`;next[key]={weightKg:Number(item.weightKg),reps:item.reps};finished[key]=true}setValues(previous=>({...next,...previous}));setDone(finished)},[session?.id,data?.activeSets?.length]);return <div><div className="label">MISSION CONTROL</div><h2 className="mb-5 text-3xl font-black">{session?'ACTIVE WORKOUT':'CHOOSE A MISSION'}</h2><div className="mb-5 flex flex-wrap gap-2">{plans.map(([id,name])=><button className={chosen===id?'btn':'ghost'} key={id} disabled={!!session&&session.templateId!==id} onClick={()=>setSelected(id)}>{name}</button>)}</div>{!session?<button className="btn mb-6" disabled={!chosen} onClick={()=>act(async()=>{const r=await api<{session:{id:string;templateId:string}}>('workouts','POST',{templateId:chosen});setSession(r.session)})}>START WORKOUT</button>:<button className="ghost mb-6" onClick={()=>act(async()=>{const r=await api<{xp:number;coins:number;prs:number;levelUp:boolean}>('workouts','PUT',{sessionId:session.id});setSession(null);alert(`Mission complete! +${r.xp} XP · +${r.coins} coins · ${r.prs} PRs${r.levelUp?' · LEVEL UP!':''}`)})}>COMPLETE MISSION</button>}<div className="grid gap-4">{items.map(item=><section className="card" key={item.exerciseId}><div className="flex justify-between"><h3 className="text-xl font-bold">{item.exerciseName}</h3><span className="label">{item.sets} × {item.repMin}–{item.repMax}</span></div><p className="muted my-3 text-sm">Previous best: {data?.past.find(p=>p.exerciseId===item.exerciseId)?.weightKg??'—'} kg</p><div className="space-y-2">{Array.from({length:item.sets},(_,n)=>{const key=`${item.exerciseId}:${n+1}`,v=values[key]??{weightKg:Number(data?.past.find(p=>p.exerciseId===item.exerciseId)?.weightKg??0),reps:item.repMin};return <div className="grid grid-cols-[35px_1fr_1fr_75px] items-center gap-2" key={key}><span className="muted">{n+1}</span><input aria-label="Weight kg" type="number" min="0" step="0.5" value={v.weightKg} onChange={e=>setValues({...values,[key]:{...v,weightKg:Number(e.target.value)}})}/><input aria-label="Reps" type="number" min="1" value={v.reps} onChange={e=>setValues({...values,[key]:{...v,reps:Number(e.target.value)}})}/><button className={done[key]?'btn':'ghost'} disabled={!session} onClick={()=>act(async()=>{await api('workouts','PATCH',{sessionId:session!.id,exerciseId:item.exerciseId,setNumber:n+1,...v});setDone({...done,[key]:true})})}>{done[key]?'✓':'LOG'}</button></div>})}</div></section>)}</div></div>}
-function Progress({weights,scans,data,act}:{weights:Weight[];scans:Scan[];data:Workout|null;act:(fn:()=>Promise<unknown>)=>void}){const [weight,setWeight]=useState('');const [calories,setCalories]=useState('');const [protein,setProtein]=useState('');return <div><div className="label">THE JOURNEY</div><h2 className="mb-5 text-3xl font-black">Your progress</h2><div className="grid gap-5 md:grid-cols-2"><section className="card"><h3 className="mb-3 text-xl font-bold">Body weight</h3><div className="h-56"><ResponsiveContainer width="100%" height="100%"><LineChart data={weights.slice().reverse().map(w=>({day:new Date(w.measuredAt).toLocaleDateString(),kg:Number(w.weightKg)}))}><XAxis dataKey="day" hide/><YAxis domain={['dataMin - 2','dataMax + 2']}/><Tooltip/><Line dataKey="kg" stroke="#4ce0ce" strokeWidth={3}/></LineChart></ResponsiveContainer></div><form className="mt-4 flex gap-2" onSubmit={e=>{e.preventDefault();act(()=>api('weight','POST',{weightKg:Number(weight)}));setWeight('')}}><input type="number" step="0.1" min="25" placeholder="Weight (kg)" value={weight} onChange={e=>setWeight(e.target.value)} required/><button className="btn">LOG</button></form></section><section className="card"><h3 className="mb-3 text-xl font-bold">Training</h3><div className="text-5xl font-black text-teal-300">{data?.history.length??0}</div><p className="muted">Recent completed workouts</p><div className="mt-5 space-y-2">{data?.history.slice(0,5).map(h=><div className="rounded-xl bg-slate-800 p-3" key={h.id}>{data.plan.find(p=>p.templateId===h.templateId)?.templateName} · {new Date(h.completedAt).toLocaleDateString()}</div>)}</div></section><section className="card"><h3 className="mb-3 text-xl font-bold">Nutrition check-in</h3><p className="muted mb-3">Target: {data?.profile.calorieTarget} kcal · {data?.profile.proteinMin}–{data?.profile.proteinMax} g protein</p><form className="gridform" onSubmit={e=>{e.preventDefault();act(()=>api('nutrition','POST',{day:new Date().toLocaleDateString('en-CA'),calories:Number(calories),proteinG:Number(protein)}))}}><input type="number" placeholder="Calories" value={calories} onChange={e=>setCalories(e.target.value)} required/><input type="number" placeholder="Protein (g)" value={protein} onChange={e=>setProtein(e.target.value)} required/><button className="btn">SAVE TODAY</button></form></section><section className="card"><h3 className="mb-3 text-xl font-bold">InBody trend</h3><div className="h-48"><ResponsiveContainer width="100%" height="100%"><LineChart data={scans.slice().reverse().map(s=>({day:s.measuredAt,fat:Number(s.bodyFatPercent),muscle:Number(s.skeletalMuscleKg)}))}><XAxis dataKey="day" hide/><YAxis/><Tooltip/><Line dataKey="fat" stroke="#fbad75"/><Line dataKey="muscle" stroke="#4ce0ce"/></LineChart></ResponsiveContainer></div><p className="muted text-sm">Fat % and skeletal muscle kg. Compare scans under similar conditions.</p></section></div></div>}
-function Shop({rewards,coins,act}:{rewards:Reward[];coins:number;act:(fn:()=>Promise<unknown>)=>void}){const [name,setName]=useState(''),[cost,setCost]=useState('');return <div><div className="label">REWARDS</div><h2 className="mb-2 text-3xl font-black">Hunter shop</h2><p className="muted mb-5">Balance: {coins} coins. Rewards are personal, with no cash value.</p><div className="grid gap-4 md:grid-cols-3">{rewards.map(r=><section className="card" key={r.id}><Gift className="text-teal-300"/><h3 className="mt-5 text-xl font-bold">{r.name}</h3><div className="muted mt-2">🪙 {r.cost}</div><button className="btn mt-5" disabled={coins<r.cost} onClick={()=>{if(confirm(`Redeem ${r.name} for ${r.cost} coins?`))act(()=>api('rewards','PUT',{rewardId:r.id}))}}>REDEEM</button></section>)}</div><form className="card mt-5 gridform" onSubmit={e=>{e.preventDefault();act(()=>api('rewards','POST',{name,cost:Number(cost)}));setName('');setCost('')}}><input placeholder="Custom reward" value={name} onChange={e=>setName(e.target.value)} required/><input type="number" min="1" placeholder="Coin cost" value={cost} onChange={e=>setCost(e.target.value)} required/><button className="btn">ADD REWARD</button></form></div>}
-function ProfileView({profile,scans,act,logout}:{profile:Profile|undefined;scans:Scan[];act:(fn:()=>Promise<unknown>)=>void;logout:()=>void}){const [file,setFile]=useState<File|null>(null);const [form,setForm]=useState({heightCm:profile?.heightCm??'168',currentWeightKg:profile?.currentWeightKg??'99',birthYear:String(profile?.birthYear??1996),sexForEstimate:profile?.sexForEstimate??'male',activityFactor:profile?.activityFactor??'1.375',goal:profile?.goal??'lose'}),[proposal,setProposal]=useState<{calories:number;proteinMin:number;proteinMax:number;maintenance:number}|null>(null),[scan,setScan]=useState({measuredAt:new Date().toLocaleDateString('en-CA'),weightKg:'',bodyFatPercent:'',skeletalMuscleKg:'',fatMassKg:'',measuredBmr:''});const payload=(applyTargets:boolean)=>({heightCm:Number(form.heightCm),currentWeightKg:Number(form.currentWeightKg),birthYear:Number(form.birthYear),sexForEstimate:form.sexForEstimate,activityFactor:Number(form.activityFactor),goal:form.goal,applyTargets});return <div><div className="label">PERSONAL STATUS</div><h2 className="mb-5 text-3xl font-black">Profile & targets</h2><section className="card mb-5"><h3 className="mb-4 text-xl font-bold">Your details</h3><div className="gridform">{[['heightCm','Height (cm)'],['currentWeightKg','Current weight (kg)'],['birthYear','Birth year']].map(([key,label])=><label className="field" key={key}>{label}<input type="number" value={form[key as keyof typeof form]} onChange={e=>setForm({...form,[key]:e.target.value})}/></label>)}<label className="field">Estimate sex<select value={form.sexForEstimate} onChange={e=>setForm({...form,sexForEstimate:e.target.value})}><option value="male">Male</option><option value="female">Female</option></select></label><label className="field">Activity factor<select value={form.activityFactor} onChange={e=>setForm({...form,activityFactor:e.target.value})}><option value="1.2">Mostly seated</option><option value="1.375">Light activity</option><option value="1.55">Moderate activity</option><option value="1.725">High activity</option></select></label><label className="field">Goal<select value={form.goal} onChange={e=>setForm({...form,goal:e.target.value})}><option value="lose">Lose weight</option><option value="maintain">Maintain</option><option value="gain">Gain weight</option></select></label></div><button className="btn mt-5" onClick={()=>act(async()=>{const r=await api<{proposal:typeof proposal}>('profile','PATCH',payload(false));setProposal(r.proposal)})}>SAVE & REVIEW TARGET</button>{proposal&&<div className="mt-5 rounded-xl border border-teal-600 bg-teal-950/40 p-4"><h4 className="font-bold">Suggested adjustment</h4><p className="mt-2">Calories: {profile?.calorieTarget} → <b>{proposal.calories}</b> kcal/day</p><p>Protein: {profile?.proteinMin}–{profile?.proteinMax} → <b>{proposal.proteinMin}–{proposal.proteinMax}</b> g/day</p><p className="muted mt-2 text-sm">Estimated maintenance: {proposal.maintenance} kcal. Formula based estimate; review against multi-week trends.</p><div className="mt-4 flex gap-2"><button className="btn" onClick={()=>act(async()=>{await api('profile','PATCH',payload(true));setProposal(null)})}>APPLY NEW TARGET</button><button className="ghost" onClick={()=>setProposal(null)}>KEEP CURRENT</button></div></div>}</section><section className="card mb-5"><h3 className="mb-2 text-xl font-bold">InBody scan</h3><p className="muted mb-4">Enter confirmed report values, and optionally attach the original image or PDF. Automatic extraction is coming later.</p><form onSubmit={e=>{e.preventDefault();act(async()=>{const payload={measuredAt:scan.measuredAt,weightKg:Number(scan.weightKg),...(scan.bodyFatPercent?{bodyFatPercent:Number(scan.bodyFatPercent)}:{}),...(scan.skeletalMuscleKg?{skeletalMuscleKg:Number(scan.skeletalMuscleKg)}:{}),...(scan.fatMassKg?{fatMassKg:Number(scan.fatMassKg)}:{}),...(scan.measuredBmr?{measuredBmr:Number(scan.measuredBmr)}:{})};if(!file)return api('inbody','POST',payload);const formData=new FormData();Object.entries(payload).forEach(([k,v])=>formData.append(k,String(v)));formData.append('file',file);const r=await fetch('/api/inbody/upload',{method:'POST',body:formData});if(!r.ok)throw new Error((await r.json()).error||'Upload failed');setFile(null)});}} className="gridform">{Object.entries({measuredAt:'Scan date',weightKg:'Weight kg',bodyFatPercent:'Body fat %',skeletalMuscleKg:'Skeletal muscle kg',fatMassKg:'Fat mass kg',measuredBmr:'BMR kcal'}).map(([key,label])=><label className="field" key={key}>{label}<input type={key==='measuredAt'?'date':'number'} step={key==='measuredAt'?undefined:'0.1'} required={key==='measuredAt'||key==='weightKg'} value={scan[key as keyof typeof scan]} onChange={e=>setScan({...scan,[key]:e.target.value})}/></label>)}<label className="field">Original report (optional)<input type="file" accept="application/pdf,image/jpeg,image/png,image/heic" onChange={e=>setFile(e.target.files?.[0]??null)}/></label><button className="btn self-end">SAVE SCAN</button></form><div className="mt-5 space-y-2">{scans.slice(0,5).map(s=><div className="rounded-xl bg-slate-800 p-3" key={s.id}>{s.measuredAt} · {s.weightKg} kg · {s.bodyFatPercent??'—'}% body fat · {s.skeletalMuscleKg??'—'} kg muscle {s.attachmentKey&&<button className="ml-2 text-teal-300 underline" onClick={async()=>{try{const r=await api<{url:string}>(`inbody/upload?scanId=${s.id}`);window.open(r.url,'_blank','noopener,noreferrer')}catch(e){alert(String(e))}}}>View report</button>}</div>)}</div></section><button className="ghost" onClick={logout}>Sign out</button></div>}
+const NAV = [
+  { name: "Home", icon: House },
+  { name: "Train", icon: Dumbbell },
+  { name: "Quests", icon: Swords },
+  { name: "Hero", icon: Sparkles },
+  { name: "Coach", icon: Bot },
+  { name: "Progress", icon: TrendingUp },
+  { name: "Shop", icon: Gift },
+  { name: "Profile", icon: UserRound },
+];
+export default function App() {
+  const [user, setUser] = useState<User | null | undefined>(undefined);
+  const [tab, setTab] = useState("Home");
+  const [data, setData] = useState<Workout | null>(null);
+  const [game, setGame] = useState<GameData | null>(null);
+  const [weights, setWeights] = useState<Weight[]>([]);
+  const [scans, setScans] = useState<Scan[]>([]);
+  const [rewards, setRewards] = useState<Reward[]>([]);
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [celebration, setCelebration] = useState<CelebrationData | null>(null);
+  const [claiming, setClaiming] = useState<string | null>(null);
+  const [session, setSession] = useState<{
+    id: string;
+    templateId: string;
+  } | null>(null);
+  const [selected, setSelected] = useState<string | null>(null);
+  const load = useCallback(async () => {
+    const [w, wt, ib, rs, g] = await Promise.all([
+      api<Workout>("workouts"),
+      api<{ weights: Weight[] }>("weight"),
+      api<{ scans: Scan[] }>("inbody"),
+      api<{ rewards: Reward[] }>("rewards"),
+      api<GameData>("game"),
+    ]);
+    setData(w);
+    setWeights(wt.weights);
+    setScans(ib.scans);
+    setRewards(rs.rewards);
+    setGame(g);
+    setSession(w.active);
+    setSelected((previous) => w.active?.templateId ?? previous);
+  }, []);
+  useEffect(() => {
+    api<{ user: User | null }>("auth")
+      .then(async (x) => {
+        setUser(x.user);
+        if (x.user)
+          try {
+            await load();
+          } catch (e) {
+            setError(e instanceof Error ? e.message : String(e));
+          }
+      })
+      .catch(() => setUser(null));
+    if ("serviceWorker" in navigator)
+      navigator.serviceWorker.register("/sw.js").catch(() => {});
+  }, [load]);
+  const act = async (fn: () => Promise<unknown>) => {
+    setError("");
+    setMessage("");
+    try {
+      await fn();
+      await load();
+      setMessage("Saved successfully");
+      return true;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      return false;
+    }
+  };
+  const claim = async (quest: Quest) => {
+    if (claiming) return;
+    setClaiming(quest.id);
+    setError("");
+    setMessage("");
+    try {
+      const result = await api<CelebrationData & { alreadyClaimed?: boolean }>(
+        "game",
+        "POST",
+        { questId: quest.id },
+      );
+      if (!result.alreadyClaimed)
+        setCelebration({ ...result, title: quest.title });
+      await load();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setClaiming(null);
+    }
+  };
+  const saveCharacter = async (character: Character) => {
+    await api("game", "PATCH", character);
+    await load();
+  };
+  const logout = async () => {
+    await api("auth", "DELETE");
+    setUser(null);
+    setGame(null);
+    setData(null);
+    setTab("Home");
+    setCelebration(null);
+    setError("");
+    setMessage("");
+  };
+  if (user === undefined)
+    return (
+      <main className="loading-screen">
+        <span className="loading-orbit" />
+        <p>Opening your next chapter…</p>
+      </main>
+    );
+  if (!user)
+    return (
+      <Auth
+        onDone={(u) => {
+          setUser(u);
+          setTab("Home");
+          load().catch((e) => setError(e.message));
+        }}
+      />
+    );
+  return (
+    <div
+      className={`app-shell ${game?.character.animations === false ? "reduce-motion" : ""}`}
+    >
+      <header className="app-header">
+        <button
+          className="brand"
+          onClick={() => setTab("Home")}
+          aria-label="LevelUp home"
+        >
+          <span className="brand-mark">
+            <ZapMark />
+          </span>
+          <span>
+            LEVEL<span className="text-violet-300">UP</span>
+            <small>MAKE EVERY DAY AN ADVENTURE</small>
+          </span>
+        </button>
+        <div className="flex items-center gap-2">
+          <button
+            className="coin-balance"
+            onClick={() => setTab("Shop")}
+            aria-label={`${data?.profile.coins ?? 0} coins. Open shop`}
+          >
+            <Coins size={17} />
+            {data?.profile.coins ?? 0}
+          </button>
+          <button className="profile-chip" onClick={() => setTab("Profile")}>
+            <UserRound size={16} />
+            <span>{user.name}</span>
+          </button>
+        </div>
+      </header>
+      <nav className="desktop-nav" aria-label="Main navigation">
+        {NAV.map(({ name, icon: Icon }) => (
+          <button
+            key={name}
+            aria-current={tab === name ? "page" : undefined}
+            className={`navbtn ${tab === name ? "active" : ""}`}
+            onClick={() => setTab(name)}
+          >
+            <Icon size={17} />
+            {name}
+            {name === "Quests" &&
+              game &&
+              game.quests.some((q) => !q.claimed && q.current >= q.target) && (
+                <span className="nav-notification" />
+              )}
+          </button>
+        ))}
+      </nav>
+      <nav className="mobile-utilities" aria-label="Health and rewards">
+        {NAV.slice(5).map(({ name, icon: Icon }) => (
+          <button
+            key={name}
+            className={tab === name ? "selected" : ""}
+            onClick={() => setTab(name)}
+          >
+            <Icon size={14} />
+            {name}
+          </button>
+        ))}
+      </nav>
+      {error && (
+        <div
+          role="alert"
+          className="mb-4 rounded-xl border border-red-500/50 bg-red-950/50 p-3 text-red-200"
+        >
+          {error}
+        </div>
+      )}
+      {message && (
+        <div role="status" className="save-toast">
+          <span>✓</span>
+          {message}
+          <button aria-label="Dismiss message" onClick={() => setMessage("")}>
+            ×
+          </button>
+        </div>
+      )}
+      {!game || !data ? (
+        <section className="card">
+          <p className="muted mb-4">
+            {error
+              ? "Your game couldn’t load. Please retry."
+              : "Loading your companion and missions…"}
+          </p>
+          <button
+            className="btn"
+            onClick={() =>
+              load()
+                .then(() => setError(""))
+                .catch((e) => setError(e.message))
+            }
+          >
+            Retry loading
+          </button>
+          <button
+            className="ghost ml-3"
+            onClick={() => logout().catch((e) => setError(e.message))}
+          >
+            Sign out
+          </button>
+        </section>
+      ) : (
+        <>
+          {tab === "Home" && (
+            <Dashboard
+              game={game}
+              name={user.name}
+              onNavigate={setTab}
+              onClaim={claim}
+              pending={claiming}
+            />
+          )}
+          {tab === "Quests" && (
+            <QuestsView
+              game={game}
+              onClaim={claim}
+              pending={claiming}
+              onTrain={() => setTab("Train")}
+            />
+          )}
+          {tab === "Hero" && (
+            <CharacterView key={user.id} game={game} onSave={saveCharacter} />
+          )}
+          {tab === "Coach" && <CoachView key={user.id} game={game} />}
+          {tab === "Train" && (
+            <Train
+              data={data}
+              session={session}
+              selected={selected}
+              setSelected={setSelected}
+              act={act}
+              setSession={setSession}
+              celebrate={setCelebration}
+            />
+          )}
+          {tab === "Progress" && (
+            <Progress weights={weights} scans={scans} data={data} act={act} />
+          )}
+          {tab === "Shop" && (
+            <Shop rewards={rewards} coins={data.profile.coins} act={act} />
+          )}
+          {tab === "Profile" && (
+            <ProfileView
+              profile={data.profile}
+              scans={scans}
+              act={act}
+              logout={() => logout().catch((e) => setError(e.message))}
+            />
+          )}
+        </>
+      )}
+      <nav className="bottom-nav" aria-label="Main navigation">
+        {NAV.slice(0, 5).map(({ name, icon: Icon }) => (
+          <button
+            key={name}
+            className={tab === name ? "active" : ""}
+            aria-current={tab === name ? "page" : undefined}
+            onClick={() => setTab(name)}
+          >
+            <Icon size={20} />
+            <span>{name}</span>
+            {name === "Quests" &&
+              game &&
+              game.quests.some((q) => !q.claimed && q.current >= q.target) && (
+                <i />
+              )}
+          </button>
+        ))}
+      </nav>
+      {celebration && game && (
+        <Celebration
+          data={celebration}
+          character={game.character}
+          onClose={() => setCelebration(null)}
+        />
+      )}
+    </div>
+  );
+}
+function ZapMark() {
+  return (
+    <svg
+      width="21"
+      height="24"
+      viewBox="0 0 21 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <path d="M12 1L2 14H9L8 23L19 10H12L12 1Z" fill="currentColor" />
+    </svg>
+  );
+}
+function Auth({ onDone }: { onDone: (u: User) => void }) {
+  const [register, setRegister] = useState(false),
+    [form, setForm] = useState({ name: "", email: "", password: "", code: "" }),
+    [error, setError] = useState("");
+  return (
+    <main className="mx-auto flex min-h-screen max-w-md items-center p-5">
+      <form
+        className="card w-full space-y-5"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          try {
+            const r = await api<{ user: User }>(
+              "auth",
+              "POST",
+              register ? form : { email: form.email, password: form.password },
+            );
+            onDone(r.user);
+          } catch (e) {
+            setError(String(e));
+          }
+        }}
+      >
+        <div className="label">YOUR JOURNEY STARTS HERE</div>
+        <h1 className="text-4xl font-black">
+          LEVEL<span className="text-teal-300">UP</span>
+        </h1>
+        {register && (
+          <label className="field">
+            Name
+            <input
+              required
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+            />
+          </label>
+        )}
+        <label className="field">
+          Email
+          <input
+            type="email"
+            required
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+          />
+        </label>
+        <label className="field">
+          Password
+          <input
+            type="password"
+            minLength={10}
+            required
+            value={form.password}
+            onChange={(e) => setForm({ ...form, password: e.target.value })}
+          />
+        </label>
+        {register && (
+          <label className="field">
+            Registration code
+            <input
+              required
+              value={form.code}
+              onChange={(e) => setForm({ ...form, code: e.target.value })}
+            />
+          </label>
+        )}
+        {error && <p className="text-red-300">{error}</p>}
+        <button className="btn w-full">
+          {register ? "CREATE ACCOUNT" : "SIGN IN"}
+        </button>
+        <button
+          type="button"
+          className="muted w-full"
+          onClick={() => setRegister(!register)}
+        >
+          {register ? "Have an account? Sign in" : "First time? Create account"}
+        </button>
+      </form>
+    </main>
+  );
+}
+function Train({
+  data,
+  session,
+  selected,
+  setSelected,
+  act,
+  setSession,
+  celebrate,
+}: {
+  data: Workout | null;
+  session: { id: string; templateId: string } | null;
+  selected: string | null;
+  setSelected: (s: string) => void;
+  act: (fn: () => Promise<unknown>) => Promise<boolean>;
+  setSession: (s: { id: string; templateId: string } | null) => void;
+  celebrate: (result: CelebrationData) => void;
+}) {
+  const plans = [
+    ...new Map(data?.plan.map((p) => [p.templateId, p.templateName]) ?? []),
+  ];
+  const chosen = session?.templateId ?? selected ?? plans[0]?.[0];
+  const items = data?.plan.filter((p) => p.templateId === chosen) ?? [];
+  const [values, setValues] = useState<
+    Record<string, { weightKg: number; reps: number }>
+  >({});
+  const [pending, setPending] = useState<string | null>(null);
+  const [restToken, setRestToken] = useState(0);
+  useEffect(() => {
+    setValues({});
+  }, [session?.id]);
+  const totalSets = items.reduce((count, item) => count + item.sets, 0);
+  const savedSets = data?.activeSets.length ?? 0;
+  const completed = new Set(
+    data?.activeSets.map((s) => `${s.exerciseId}:${s.setNumber}`),
+  );
+  async function run(key: string, fn: () => Promise<unknown>) {
+    if (pending) return;
+    setPending(key);
+    try {
+      return await act(fn);
+    } finally {
+      setPending(null);
+    }
+  }
+  return (
+    <div className="screen-enter">
+      <div className="section-heading">
+        <div>
+          <div className="label text-violet-300">Mission control</div>
+          <h2>
+            {session ? "Your mission is live." : "Choose your next adventure."}
+          </h2>
+          <p className="muted">
+            Focus on the next set. Every logged rep is a step forward.
+          </p>
+        </div>
+        {session && (
+          <span className="soft-badge">
+            <span className="status-dot" /> Workout active
+          </span>
+        )}
+      </div>
+      <div className="mb-5 flex flex-wrap gap-2">
+        {plans.map(([id, name]) => (
+          <button
+            className={chosen === id ? "btn" : "ghost"}
+            key={id}
+            disabled={!!pending || (!!session && session.templateId !== id)}
+            onClick={() => setSelected(id)}
+          >
+            {name}
+          </button>
+        ))}
+      </div>
+      {session ? (
+        <section className="training-control card mb-5">
+          <div className="training-progress">
+            <div className="mb-2 flex justify-between gap-3">
+              <b>
+                {savedSets} / {totalSets} sets logged
+              </b>
+              <span className="muted text-sm">
+                {totalSets ? Math.round((savedSets / totalSets) * 100) : 0}%
+              </span>
+            </div>
+            <div className="game-progress">
+              <div
+                style={{
+                  width: `${totalSets ? (savedSets / totalSets) * 100 : 0}%`,
+                }}
+              />
+            </div>
+            <p className="muted mt-2 text-xs">
+              Complete all sets for +25 bonus XP. Finish after at least 3 sets.
+            </p>
+          </div>
+          <button
+            className="btn"
+            disabled={!!pending || savedSets < 3}
+            onClick={() =>
+              run("complete", async () => {
+                const result = await api<{
+                  xp: number;
+                  coins: number;
+                  prs: number;
+                  levelUp?: boolean;
+                  alreadyCompleted?: boolean;
+                }>("workouts", "PUT", { sessionId: session.id });
+                setRestToken(0);
+                setSession(null);
+                if (!result.alreadyCompleted)
+                  celebrate({ ...result, title: "Mission complete!" });
+              })
+            }
+          >
+            {pending === "complete" ? "Completing…" : "Complete mission"}{" "}
+            <ArrowRight size={16} />
+          </button>
+        </section>
+      ) : (
+        <button
+          className="btn mb-6"
+          disabled={!chosen || !!pending}
+          onClick={() =>
+            run("start", async () => {
+              const r = await api<{
+                session: { id: string; templateId: string };
+              }>("workouts", "POST", { templateId: chosen });
+              setRestToken(0);
+              setSession(r.session);
+            })
+          }
+        >
+          {pending === "start" ? "Starting…" : "Start workout"}{" "}
+          <Dumbbell size={17} />
+        </button>
+      )}
+      {session && <RestTimer startToken={restToken} />}
+      <div className="grid gap-4">
+        {items.map((item) => (
+          <section className="card" key={item.exerciseId}>
+            <div className="flex flex-wrap justify-between gap-2">
+              <h3 className="text-xl font-bold">{item.exerciseName}</h3>
+              <span className="label">
+                {item.sets} × {item.repMin}–{item.repMax}
+              </span>
+            </div>
+            <p className="muted my-3 text-sm">
+              Previous logged weight:{" "}
+              {data?.past.find((p) => p.exerciseId === item.exerciseId)
+                ?.weightKg ?? "—"}{" "}
+              kg
+            </p>
+            <div className="mb-2 grid grid-cols-[30px_1fr_1fr_80px] gap-2 text-xs text-slate-400">
+              <span>Set</span>
+              <span>Weight (kg)</span>
+              <span>Reps</span>
+              <span className="text-center">Log</span>
+            </div>
+            <div className="space-y-2">
+              {Array.from({ length: item.sets }, (_, n) => {
+                const key = `${item.exerciseId}:${n + 1}`;
+                const saved = data?.activeSets.find(
+                  (s) =>
+                    s.exerciseId === item.exerciseId && s.setNumber === n + 1,
+                );
+                const value = values[key] ?? {
+                  weightKg: Number(
+                    saved?.weightKg ??
+                      data?.past.find((p) => p.exerciseId === item.exerciseId)
+                        ?.weightKg ??
+                      0,
+                  ),
+                  reps: saved?.reps ?? item.repMin,
+                };
+                const done = completed.has(key);
+                return (
+                  <div
+                    className={`set-row grid grid-cols-[30px_1fr_1fr_80px] items-center gap-2 ${done ? "logged" : ""}`}
+                    key={key}
+                  >
+                    <span className="muted">{n + 1}</span>
+                    <input
+                      aria-label={`${item.exerciseName} set ${n + 1} weight kg`}
+                      type="number"
+                      min="0"
+                      max="500"
+                      step="0.5"
+                      value={value.weightKg}
+                      disabled={!!pending}
+                      onChange={(e) =>
+                        setValues({
+                          ...values,
+                          [key]: { ...value, weightKg: Number(e.target.value) },
+                        })
+                      }
+                    />
+                    <input
+                      aria-label={`${item.exerciseName} set ${n + 1} reps`}
+                      type="number"
+                      min="1"
+                      max="100"
+                      value={value.reps}
+                      disabled={!!pending}
+                      onChange={(e) =>
+                        setValues({
+                          ...values,
+                          [key]: { ...value, reps: Number(e.target.value) },
+                        })
+                      }
+                    />
+                    <button
+                      className={done ? "btn" : "ghost"}
+                      disabled={!session || !!pending}
+                      onClick={async () => {
+                        const ok = await run(key, () =>
+                          api("workouts", "PATCH", {
+                            sessionId: session!.id,
+                            exerciseId: item.exerciseId,
+                            setNumber: n + 1,
+                            ...value,
+                          }),
+                        );
+                        if (ok && !done) setRestToken((t) => t + 1);
+                      }}
+                    >
+                      {pending === key ? "…" : done ? "✓" : "LOG"}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        ))}
+      </div>
+    </div>
+  );
+}
+function RestTimer({ startToken }: { startToken: number }) {
+  const [duration, setDuration] = useState(90);
+  const [remaining, setRemaining] = useState(90);
+  const [end, setEnd] = useState<number | null>(null);
+  const [started, setStarted] = useState(false);
+  useEffect(() => {
+    if (startToken > 0) {
+      setRemaining(duration);
+      setEnd(Date.now() + duration * 1000);
+      setStarted(true);
+    }
+  }, [startToken]);
+  useEffect(() => {
+    if (!end) return;
+    const tick = () => {
+      const seconds = Math.max(0, Math.ceil((end - Date.now()) / 1000));
+      setRemaining(seconds);
+      if (seconds === 0) setEnd(null);
+    };
+    tick();
+    const timer = setInterval(tick, 250);
+    return () => clearInterval(timer);
+  }, [end]);
+  return (
+    <section className="rest-timer mb-5">
+      <div className="flex items-center gap-3">
+        <span className="stat-icon violet">
+          <TimerReset size={20} />
+        </span>
+        <div>
+          <b>
+            {started && remaining === 0
+              ? "Ready when you are."
+              : "Recovery break"}
+          </b>
+          <p className="muted text-xs">
+            {started && remaining === 0
+              ? "Your timer is done. Take more rest if you need it."
+              : "A short pause between sets. No rush."}
+          </p>
+        </div>
+      </div>
+      <div className="flex items-center gap-3">
+        <span
+          className="timer-digits"
+          aria-label={`${Math.floor(remaining / 60)} minutes ${remaining % 60} seconds remaining`}
+        >
+          {Math.floor(remaining / 60)}:{String(remaining % 60).padStart(2, "0")}
+        </span>
+        <select
+          aria-label="Rest duration"
+          value={duration}
+          onChange={(e) => {
+            const seconds = Number(e.target.value);
+            setDuration(seconds);
+            setRemaining(seconds);
+            if (end) setEnd(Date.now() + seconds * 1000);
+          }}
+        >
+          {[60, 90, 120, 180].map((s) => (
+            <option key={s} value={s}>
+              {s}s
+            </option>
+          ))}
+        </select>
+        <button
+          className="ghost"
+          aria-label={end ? "Pause rest timer" : "Start rest timer"}
+          onClick={() => {
+            if (end) {
+              setRemaining(Math.max(0, Math.ceil((end - Date.now()) / 1000)));
+              setEnd(null);
+            } else {
+              const seconds = remaining || duration;
+              setRemaining(seconds);
+              setEnd(Date.now() + seconds * 1000);
+              setStarted(true);
+            }
+          }}
+        >
+          {end ? <Pause size={16} /> : <Play size={16} />}
+        </button>
+      </div>
+    </section>
+  );
+}
+function Progress({
+  weights,
+  scans,
+  data,
+  act,
+}: {
+  weights: Weight[];
+  scans: Scan[];
+  data: Workout | null;
+  act: (fn: () => Promise<unknown>) => void;
+}) {
+  const [weight, setWeight] = useState("");
+  const [calories, setCalories] = useState("");
+  const [protein, setProtein] = useState("");
+  return (
+    <div>
+      <div className="label">THE JOURNEY</div>
+      <h2 className="mb-5 text-3xl font-black">Your progress</h2>
+      <div className="grid gap-5 md:grid-cols-2">
+        <section className="card">
+          <h3 className="mb-3 text-xl font-bold">Body weight</h3>
+          <div className="h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart
+                data={weights
+                  .slice()
+                  .reverse()
+                  .map((w) => ({
+                    day: new Date(w.measuredAt).toLocaleDateString(),
+                    kg: Number(w.weightKg),
+                  }))}
+              >
+                <XAxis dataKey="day" hide />
+                <YAxis domain={["dataMin - 2", "dataMax + 2"]} />
+                <Tooltip />
+                <Line dataKey="kg" stroke="#4ce0ce" strokeWidth={3} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+          <form
+            className="mt-4 flex gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              act(() => api("weight", "POST", { weightKg: Number(weight) }));
+              setWeight("");
+            }}
+          >
+            <input
+              type="number"
+              step="0.1"
+              min="25"
+              placeholder="Weight (kg)"
+              value={weight}
+              onChange={(e) => setWeight(e.target.value)}
+              required
+            />
+            <button className="btn">LOG</button>
+          </form>
+        </section>
+        <section className="card">
+          <h3 className="mb-3 text-xl font-bold">Training</h3>
+          <div className="text-5xl font-black text-teal-300">
+            {data?.history.length ?? 0}
+          </div>
+          <p className="muted">Recent completed workouts</p>
+          <div className="mt-5 space-y-2">
+            {data?.history.slice(0, 5).map((h) => (
+              <div className="rounded-xl bg-slate-800 p-3" key={h.id}>
+                {
+                  data.plan.find((p) => p.templateId === h.templateId)
+                    ?.templateName
+                }{" "}
+                · {new Date(h.completedAt).toLocaleDateString()}
+              </div>
+            ))}
+          </div>
+        </section>
+        <section className="card">
+          <h3 className="mb-3 text-xl font-bold">Nutrition check-in</h3>
+          <p className="muted mb-3">
+            Target: {data?.profile.calorieTarget} kcal ·{" "}
+            {data?.profile.proteinMin}–{data?.profile.proteinMax} g protein
+          </p>
+          <form
+            className="gridform"
+            onSubmit={(e) => {
+              e.preventDefault();
+              act(() =>
+                api("nutrition", "POST", {
+                  day: dayKey(new Date(), data?.profile.timezone),
+                  calories: Number(calories),
+                  proteinG: Number(protein),
+                }),
+              );
+            }}
+          >
+            <input
+              type="number"
+              placeholder="Calories"
+              value={calories}
+              onChange={(e) => setCalories(e.target.value)}
+              required
+            />
+            <input
+              type="number"
+              placeholder="Protein (g)"
+              value={protein}
+              onChange={(e) => setProtein(e.target.value)}
+              required
+            />
+            <button className="btn">SAVE TODAY</button>
+          </form>
+        </section>
+        <section className="card">
+          <h3 className="mb-3 text-xl font-bold">InBody trend</h3>
+          <div className="h-48">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart
+                data={scans
+                  .slice()
+                  .reverse()
+                  .map((s) => ({
+                    day: s.measuredAt,
+                    fat: Number(s.bodyFatPercent),
+                    muscle: Number(s.skeletalMuscleKg),
+                  }))}
+              >
+                <XAxis dataKey="day" hide />
+                <YAxis />
+                <Tooltip />
+                <Line dataKey="fat" stroke="#fbad75" />
+                <Line dataKey="muscle" stroke="#4ce0ce" />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+          <p className="muted text-sm">
+            Fat % and skeletal muscle kg. Compare scans under similar
+            conditions.
+          </p>
+        </section>
+      </div>
+    </div>
+  );
+}
+function Shop({
+  rewards,
+  coins,
+  act,
+}: {
+  rewards: Reward[];
+  coins: number;
+  act: (fn: () => Promise<unknown>) => void;
+}) {
+  const [name, setName] = useState(""),
+    [cost, setCost] = useState("");
+  return (
+    <div>
+      <div className="label">REWARDS</div>
+      <h2 className="mb-2 text-3xl font-black">Hunter shop</h2>
+      <p className="muted mb-5">
+        Balance: {coins} coins. Rewards are personal, with no cash value.
+      </p>
+      <div className="grid gap-4 md:grid-cols-3">
+        {rewards.map((r) => (
+          <section className="card" key={r.id}>
+            <Gift className="text-teal-300" />
+            <h3 className="mt-5 text-xl font-bold">{r.name}</h3>
+            <div className="muted mt-2">🪙 {r.cost}</div>
+            <button
+              className="btn mt-5"
+              disabled={coins < r.cost}
+              onClick={() => {
+                if (confirm(`Redeem ${r.name} for ${r.cost} coins?`))
+                  act(() => api("rewards", "PUT", { rewardId: r.id }));
+              }}
+            >
+              REDEEM
+            </button>
+          </section>
+        ))}
+      </div>
+      <form
+        className="card mt-5 gridform"
+        onSubmit={(e) => {
+          e.preventDefault();
+          act(() => api("rewards", "POST", { name, cost: Number(cost) }));
+          setName("");
+          setCost("");
+        }}
+      >
+        <input
+          placeholder="Custom reward"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          required
+        />
+        <input
+          type="number"
+          min="1"
+          placeholder="Coin cost"
+          value={cost}
+          onChange={(e) => setCost(e.target.value)}
+          required
+        />
+        <button className="btn">ADD REWARD</button>
+      </form>
+    </div>
+  );
+}
+function ProfileView({
+  profile,
+  scans,
+  act,
+  logout,
+}: {
+  profile: Profile | undefined;
+  scans: Scan[];
+  act: (fn: () => Promise<unknown>) => void;
+  logout: () => void;
+}) {
+  const [file, setFile] = useState<File | null>(null);
+  const [form, setForm] = useState({
+      heightCm: profile?.heightCm ?? "168",
+      currentWeightKg: profile?.currentWeightKg ?? "99",
+      birthYear: String(profile?.birthYear ?? 1996),
+      sexForEstimate: profile?.sexForEstimate ?? "male",
+      activityFactor: profile?.activityFactor ?? "1.375",
+      goal: profile?.goal ?? "lose",
+    }),
+    [proposal, setProposal] = useState<{
+      calories: number;
+      proteinMin: number;
+      proteinMax: number;
+      maintenance: number;
+    } | null>(null),
+    [scan, setScan] = useState({
+      measuredAt: dayKey(new Date(), profile?.timezone),
+      weightKg: "",
+      bodyFatPercent: "",
+      skeletalMuscleKg: "",
+      fatMassKg: "",
+      measuredBmr: "",
+    });
+  const payload = (applyTargets: boolean) => ({
+    heightCm: Number(form.heightCm),
+    currentWeightKg: Number(form.currentWeightKg),
+    birthYear: Number(form.birthYear),
+    sexForEstimate: form.sexForEstimate,
+    activityFactor: Number(form.activityFactor),
+    goal: form.goal,
+    applyTargets,
+  });
+  return (
+    <div>
+      <div className="label">PERSONAL STATUS</div>
+      <h2 className="mb-5 text-3xl font-black">Profile & targets</h2>
+      <section className="card mb-5">
+        <h3 className="mb-4 text-xl font-bold">Your details</h3>
+        <div className="gridform">
+          {[
+            ["heightCm", "Height (cm)"],
+            ["currentWeightKg", "Current weight (kg)"],
+            ["birthYear", "Birth year"],
+          ].map(([key, label]) => (
+            <label className="field" key={key}>
+              {label}
+              <input
+                type="number"
+                value={form[key as keyof typeof form]}
+                onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+              />
+            </label>
+          ))}
+          <label className="field">
+            Estimate sex
+            <select
+              value={form.sexForEstimate}
+              onChange={(e) =>
+                setForm({ ...form, sexForEstimate: e.target.value })
+              }
+            >
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+            </select>
+          </label>
+          <label className="field">
+            Activity factor
+            <select
+              value={form.activityFactor}
+              onChange={(e) =>
+                setForm({ ...form, activityFactor: e.target.value })
+              }
+            >
+              <option value="1.2">Mostly seated</option>
+              <option value="1.375">Light activity</option>
+              <option value="1.55">Moderate activity</option>
+              <option value="1.725">High activity</option>
+            </select>
+          </label>
+          <label className="field">
+            Goal
+            <select
+              value={form.goal}
+              onChange={(e) => setForm({ ...form, goal: e.target.value })}
+            >
+              <option value="lose">Lose weight</option>
+              <option value="maintain">Maintain</option>
+              <option value="gain">Gain weight</option>
+            </select>
+          </label>
+        </div>
+        <button
+          className="btn mt-5"
+          onClick={() =>
+            act(async () => {
+              const r = await api<{ proposal: typeof proposal }>(
+                "profile",
+                "PATCH",
+                payload(false),
+              );
+              setProposal(r.proposal);
+            })
+          }
+        >
+          SAVE & REVIEW TARGET
+        </button>
+        {proposal && (
+          <div className="mt-5 rounded-xl border border-teal-600 bg-teal-950/40 p-4">
+            <h4 className="font-bold">Suggested adjustment</h4>
+            <p className="mt-2">
+              Calories: {profile?.calorieTarget} → <b>{proposal.calories}</b>{" "}
+              kcal/day
+            </p>
+            <p>
+              Protein: {profile?.proteinMin}–{profile?.proteinMax} →{" "}
+              <b>
+                {proposal.proteinMin}–{proposal.proteinMax}
+              </b>{" "}
+              g/day
+            </p>
+            <p className="muted mt-2 text-sm">
+              Estimated maintenance: {proposal.maintenance} kcal. Formula based
+              estimate; review against multi-week trends.
+            </p>
+            <div className="mt-4 flex gap-2">
+              <button
+                className="btn"
+                onClick={() =>
+                  act(async () => {
+                    await api("profile", "PATCH", payload(true));
+                    setProposal(null);
+                  })
+                }
+              >
+                APPLY NEW TARGET
+              </button>
+              <button className="ghost" onClick={() => setProposal(null)}>
+                KEEP CURRENT
+              </button>
+            </div>
+          </div>
+        )}
+      </section>
+      <section className="card mb-5">
+        <h3 className="mb-2 text-xl font-bold">InBody scan</h3>
+        <p className="muted mb-4">
+          Enter confirmed report values, and optionally attach the original
+          image or PDF. Automatic extraction is coming later.
+        </p>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            act(async () => {
+              const payload = {
+                measuredAt: scan.measuredAt,
+                weightKg: Number(scan.weightKg),
+                ...(scan.bodyFatPercent
+                  ? { bodyFatPercent: Number(scan.bodyFatPercent) }
+                  : {}),
+                ...(scan.skeletalMuscleKg
+                  ? { skeletalMuscleKg: Number(scan.skeletalMuscleKg) }
+                  : {}),
+                ...(scan.fatMassKg
+                  ? { fatMassKg: Number(scan.fatMassKg) }
+                  : {}),
+                ...(scan.measuredBmr
+                  ? { measuredBmr: Number(scan.measuredBmr) }
+                  : {}),
+              };
+              if (!file) return api("inbody", "POST", payload);
+              const formData = new FormData();
+              Object.entries(payload).forEach(([k, v]) =>
+                formData.append(k, String(v)),
+              );
+              formData.append("file", file);
+              const r = await fetch("/api/inbody/upload", {
+                method: "POST",
+                body: formData,
+              });
+              if (!r.ok)
+                throw new Error((await r.json()).error || "Upload failed");
+              setFile(null);
+            });
+          }}
+          className="gridform"
+        >
+          {Object.entries({
+            measuredAt: "Scan date",
+            weightKg: "Weight kg",
+            bodyFatPercent: "Body fat %",
+            skeletalMuscleKg: "Skeletal muscle kg",
+            fatMassKg: "Fat mass kg",
+            measuredBmr: "BMR kcal",
+          }).map(([key, label]) => (
+            <label className="field" key={key}>
+              {label}
+              <input
+                type={key === "measuredAt" ? "date" : "number"}
+                step={key === "measuredAt" ? undefined : "0.1"}
+                required={key === "measuredAt" || key === "weightKg"}
+                value={scan[key as keyof typeof scan]}
+                onChange={(e) => setScan({ ...scan, [key]: e.target.value })}
+              />
+            </label>
+          ))}
+          <label className="field">
+            Original report (optional)
+            <input
+              type="file"
+              accept="application/pdf,image/jpeg,image/png,image/heic"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            />
+          </label>
+          <button className="btn self-end">SAVE SCAN</button>
+        </form>
+        <div className="mt-5 space-y-2">
+          {scans.slice(0, 5).map((s) => (
+            <div className="rounded-xl bg-slate-800 p-3" key={s.id}>
+              {s.measuredAt} · {s.weightKg} kg · {s.bodyFatPercent ?? "—"}% body
+              fat · {s.skeletalMuscleKg ?? "—"} kg muscle{" "}
+              {s.attachmentKey && (
+                <button
+                  className="ml-2 text-teal-300 underline"
+                  onClick={async () => {
+                    try {
+                      const r = await api<{ url: string }>(
+                        `inbody/upload?scanId=${s.id}`,
+                      );
+                      window.open(r.url, "_blank", "noopener,noreferrer");
+                    } catch (e) {
+                      alert(String(e));
+                    }
+                  }}
+                >
+                  View report
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      </section>
+      <button className="ghost" onClick={logout}>
+        Sign out
+      </button>
+    </div>
+  );
+}

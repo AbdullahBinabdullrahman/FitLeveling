@@ -15,6 +15,13 @@
       "when": 1790838073465,
       "tag": "0001_numerous_lady_mastermind",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1790849639134,
+      "tag": "0002_careless_clint_barton",
+      "breakpoints": true
     }
   ]
 }
