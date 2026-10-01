@@ -1,0 +1,1 @@
+ALTER TABLE "inbody_scans" ADD COLUMN "attachment_key" text;

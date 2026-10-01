@@ -1,0 +1,20 @@
+services:
+  migrate:
+    build:
+      context: .
+      target: migration
+    env_file: .env
+    restart: "no"
+  web:
+    build:
+      context: .
+      target: runner
+    ports: ["${PORT:-3000}:3000"]
+    env_file: .env
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      retries: 3
