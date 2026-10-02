@@ -43,6 +43,13 @@
       "when": 1790942796193,
       "tag": "0005_certain_cobalt_man",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790944184104,
+      "tag": "0006_loose_drax",
+      "breakpoints": true
     }
   ]
 }

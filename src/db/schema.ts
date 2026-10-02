@@ -1,5 +1,7 @@
 import {
   pgTable,
+  serial,
+  index,
   uuid,
   text,
   timestamp,
@@ -283,3 +285,49 @@ export const communityCheers = pgTable(
     ),
   ],
 );
+
+export const friendships = pgTable(
+  "friendships",
+  {
+    id: id(),
+    lowUserId: uuid("low_user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    highUserId: uuid("high_user_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    requestedBy: uuid("requested_by")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    status: text("status").notNull().default("pending"),
+    blockedBy: uuid("blocked_by").references(() => users.id, {
+      onDelete: "cascade",
+    }),
+    lowReadAt: timestamp("low_read_at", { withTimezone: true }),
+    highReadAt: timestamp("high_read_at", { withTimezone: true }),
+    createdAt: created(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (t) => [uniqueIndex("friendship_pair").on(t.lowUserId, t.highUserId)],
+).enableRLS();
+export const directMessages = pgTable(
+  "direct_messages",
+  {
+    id: serial("id").primaryKey(),
+    friendshipId: uuid("friendship_id")
+      .references(() => friendships.id, { onDelete: "cascade" })
+      .notNull(),
+    senderId: uuid("sender_id")
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+    clientId: uuid("client_id").notNull(),
+    body: text("body").notNull(),
+    createdAt: created(),
+  },
+  (t) => [
+    uniqueIndex("message_send_once").on(t.senderId, t.clientId),
+    index("message_conversation_order").on(t.friendshipId, t.id),
+  ],
+).enableRLS();

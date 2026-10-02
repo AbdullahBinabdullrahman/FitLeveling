@@ -102,3 +102,13 @@ The collection now includes three cosmetic weapons (Ion Saber, Solar Hammer, Pri
 The Train screen shows your equipped companion and a mission briefing, then switches to mission-in-progress after a successful workout start. It displays the existing reward rules: 100 base XP and 20 base coins on completion, 25 bonus XP for logging all prescribed sets, and possible personal-record bonuses. Starting a session does not award currency. The existing completion flow supplies the actual reward celebration.
 
 Player resale and item trading are intentionally deferred to a later release. They will require transferable item identities, transaction history, locked balances and ownership, and rules for duplicates and equipped items before enabling exchange.
+
+## Friends, requests and private chat
+
+Migration `0006_loose_drax.sql` adds `friendships` and `direct_messages`, indexes and row-level security. Apply it after `0005`. Server database connections must use the PostgreSQL role configured for this app; direct anonymous Supabase table access has no policies granting access to these tables.
+
+Open **Community → Friends / Friend requests / Chat**. Public alias search requires community membership. Senders can cancel outgoing requests; recipients can accept or decline. Accepted friends can send private text messages (up to 2,000 characters), load earlier history, see unread counts, remove friends and block/unblock people. Blocking or removal stops message reads and sends. Unblocking does not restore the friendship; a new request must be accepted. Existing friends still work after leaving the public guild.
+
+Message content renders as plain text. Messages refresh every five seconds while the page is visible; friend lists refresh every ten seconds. This release does not show online status, typing indicators or attachments. Per-message client IDs prevent duplicate sends on retries. Messages persist in the database; removal/blocking disables access but does not erase conversation history. History becomes available again if both users re-establish the friendship.
+
+Authorization uses the server session and the friendship participants, never client-supplied sender IDs. Friendship row locks coordinate sending with accept/remove/block operations. RLS is enabled on both social tables. Application permission tests cover outsiders, pending requests, recipient-only acceptance, cancellation, blocking and unblocking; the integration checks exercise the built API against temporary Supabase test users and clean them up afterwards.

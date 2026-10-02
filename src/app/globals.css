@@ -2182,3 +2182,141 @@ input[type="checkbox"] {
 .reduce-motion .mission-entered {
   animation: none;
 }
+.social-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 7px;
+  background: #171b2a;
+  border: 1px solid #2c3244;
+  border-radius: 15px;
+  margin-bottom: 24px;
+}
+.social-tabs > button {
+  font-size: 13px;
+  padding: 10px 15px;
+  border-radius: 10px;
+  color: #a5b1c8;
+}
+.social-tabs > button.selected {
+  color: #d2bfff;
+  background: #b89aff22;
+}
+.social-tabs > button:last-child {
+  margin-left: auto;
+}
+.social-summary {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  color: #a5b1c8;
+  font-size: 13px;
+  margin: 0 0 20px;
+}
+.social-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+.friend-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 0;
+  border-bottom: 1px solid #ffffff0c;
+}
+.friend-row b {
+  overflow-wrap: anywhere;
+}
+.friend-avatar {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 12px;
+  background: #b89aff22;
+  color: #d2bfff;
+  font-weight: 800;
+}
+.friend-search {
+  display: flex;
+  gap: 8px;
+}
+.friend-search input {
+  min-width: 0;
+  flex: 1;
+}
+.friend-menu {
+  position: relative;
+}
+.friend-menu summary {
+  cursor: pointer;
+  padding: 7px;
+  list-style: none;
+}
+.friend-menu[open] {
+  background: #242c40;
+  border-radius: 9px;
+}
+.friend-menu button {
+  display: block;
+  font-size: 11px;
+  padding: 9px;
+  white-space: nowrap;
+}
+.social-chat-layout {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+.conversation-button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  text-align: left;
+  width: 100%;
+  padding: 12px;
+  margin: 4px 0;
+  border-radius: 10px;
+  font-size: 13px;
+}
+.conversation-button.selected {
+  background: #b89aff22;
+  color: #d2bfff;
+}
+.friend-chat .chat-messages {
+  height: 420px;
+}
+.friend-chat .chat-message p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.friend-chat time {
+  display: block;
+  margin-top: 6px;
+}
+.friend-chat .chat-message {
+  max-width: 85%;
+}
+@media (max-width: 700px) {
+  .social-columns,
+  .social-chat-layout {
+    grid-template-columns: 1fr;
+  }
+  .social-tabs > button {
+    padding: 9px 11px;
+    font-size: 12px;
+  }
+  .social-tabs > button:last-child {
+    margin-left: 0;
+  }
+  .friend-row {
+    flex-wrap: wrap;
+  }
+  .friend-chat .chat-messages {
+    height: 360px;
+  }
+}
