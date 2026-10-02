@@ -135,6 +135,9 @@ export default function CosmeticShop({
             ["all", "All items"],
             ["skin", "Skins"],
             ["aura", "Auras"],
+            ["weapon", "Weapons"],
+            ["trinket", "Accessories"],
+            ["vfx", "VFX"],
             ["owned", "My inventory"],
           ].map(([id, label]) => (
             <button
@@ -242,6 +245,20 @@ export default function CosmeticShop({
         >
           Equip classic skin
         </button>
+        {[
+          ["unarmed", "Remove weapon"],
+          ["no-trinket", "Remove accessory"],
+          ["no-vfx", "Remove VFX"],
+        ].map(([id, label]) => (
+          <button
+            className="ghost"
+            key={id}
+            disabled={!!pending || !loaded}
+            onClick={() => action(id, "equip")}
+          >
+            {label}
+          </button>
+        ))}
         <button
           className="ghost"
           disabled={!!pending || !loaded}

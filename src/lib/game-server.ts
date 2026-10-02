@@ -86,6 +86,9 @@ export async function readGame(
         animations: characterRows[0].animations,
         skin: characterRows[0].skin,
         aura: characterRows[0].aura,
+        weapon: characterRows[0].weapon,
+        trinket: characterRows[0].trinket,
+        vfx: characterRows[0].vfx,
       } as Character)
     : DEFAULT_CHARACTER;
   return {

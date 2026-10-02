@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { weeklyScore, league, COSMETICS } from "./community";
+import {
+  weeklyScore,
+  league,
+  COSMETICS,
+  resolveCosmeticSlot,
+} from "./community";
 describe("community and collection rules", () => {
   it("caps each habit category so extra training cannot increase weekly score", () => {
     expect(weeklyScore(3, 3, 3)).toBe(420);
@@ -21,5 +26,19 @@ describe("community and collection rules", () => {
     expect(
       COSMETICS.every((i) => Number.isInteger(i.price) && i.price > 0),
     ).toBe(true);
+  });
+});
+
+describe("equipment slots", () => {
+  it("routes weapons, accessories and effects into independent slots", () => {
+    expect(resolveCosmeticSlot("ionblade")).toBe("weapon");
+    expect(resolveCosmeticSlot("scoutpack")).toBe("trinket");
+    expect(resolveCosmeticSlot("ionpulse")).toBe("vfx");
+  });
+  it("clears only the requested slot and rejects unknown equipment", () => {
+    expect(resolveCosmeticSlot("unarmed")).toBe("weapon");
+    expect(resolveCosmeticSlot("no-trinket")).toBe("trinket");
+    expect(resolveCosmeticSlot("no-vfx")).toBe("vfx");
+    expect(resolveCosmeticSlot("not-an-item")).toBeUndefined();
   });
 });

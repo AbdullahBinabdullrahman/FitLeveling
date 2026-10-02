@@ -25,6 +25,9 @@ export default function Character({
   const palette =
     skin?.slot === "skin" ? skin.colors : ["#edf5ff", "#b4c6e4", "#647497"];
   const aura = cosmeticById(character.aura ?? "none");
+  const weapon = cosmeticById(character.weapon ?? "unarmed");
+  const trinket = cosmeticById(character.trinket ?? "no-trinket");
+  const vfx = cosmeticById(character.vfx ?? "no-vfx");
   const currentMood = fixedMood ?? mood;
   const active = character.animations ? currentMood : "still";
   const style = { "--hero-color": color } as CSSProperties;
@@ -122,7 +125,66 @@ export default function Character({
           )}
         </g>
       )}
+      {vfx && (
+        <g
+          className={`hero-vfx vfx-${vfx.id} ${character.animations ? "vfx-animated" : ""}`}
+          fill="none"
+          stroke={vfx.colors[1]}
+          strokeWidth="2"
+        >
+          {vfx.id === "ionpulse" ? (
+            <>
+              <ellipse
+                className="vfx-pulse"
+                cx="160"
+                cy="176"
+                rx="135"
+                ry="141"
+              />
+              <ellipse
+                className="vfx-pulse delayed"
+                cx="160"
+                cy="176"
+                rx="119"
+                ry="126"
+              />
+            </>
+          ) : (
+            <>
+              {[
+                [60, 240],
+                [265, 225],
+                [77, 125],
+                [244, 97],
+                [46, 170],
+                [270, 160],
+              ].map(([x, y], i) => (
+                <circle
+                  className="vfx-spark"
+                  key={x}
+                  cx={x}
+                  cy={y}
+                  r={i % 2 ? 3 : 5}
+                  fill={vfx.colors[i % 3]}
+                  style={{ animationDelay: `${i * 0.3}s` }}
+                />
+              ))}
+            </>
+          )}
+        </g>
+      )}
       <g className="hero-body">
+        {trinket?.id === "scoutpack" && (
+          <g fill="#263750" stroke={trinket.colors[1]} strokeWidth="2">
+            <rect x="96" y="155" width="25" height="75" rx="8" />
+            <rect x="199" y="155" width="25" height="75" rx="8" />
+            <path
+              d="M99 230l10 25 10-25M201 230l10 25 10-25"
+              fill={trinket.colors[0]}
+              opacity=".7"
+            />
+          </g>
+        )}
         {character.accessory === "cape" && (
           <path
             d="M115 164 Q91 224 86 285 Q160 266 234 285 Q225 220 205 164Z"
@@ -318,6 +380,15 @@ export default function Character({
           />
           <circle cx="111" cy="128" r="7" fill="#405572" />
           <circle cx="209" cy="128" r="7" fill="#405572" />
+          {trinket?.id === "starvisor" && (
+            <g fill="none" stroke={trinket.colors[1]} strokeWidth="3">
+              <path d="M121 116h77v26h-77Z" />
+              <path
+                d="M185 117l3 6 6 3-6 3-3 6-3-6-6-3 6-3Z"
+                fill={trinket.colors[0]}
+              />
+            </g>
+          )}
           {character.accessory === "crown" && (
             <path
               d="M134 91L131 65L146 76L160 58L174 76L189 65L186 91Z"
@@ -327,6 +398,37 @@ export default function Character({
             />
           )}
         </g>
+        {weapon && (
+          <g
+            className="hero-weapon"
+            stroke={weapon.colors[1]}
+            strokeWidth="2"
+            strokeLinejoin="round"
+          >
+            {weapon.id === "ionblade" ? (
+              <>
+                <path
+                  d="M233 223l18-86 7-13 3 16-18 86Z"
+                  fill={weapon.colors[0]}
+                />
+                <path d="M224 221l27 6M236 224l-5 19" strokeWidth="6" />
+                <path d="M252 141l-16 76" stroke="#fff" opacity=".8" />
+              </>
+            ) : weapon.id === "sunhammer" ? (
+              <>
+                <path d="M237 237l8-73" stroke="#654b31" strokeWidth="8" />
+                <path d="M224 145h48v28h-48l-8-14Z" fill={weapon.colors[2]} />
+                <circle cx="244" cy="159" r="9" fill={weapon.colors[0]} />
+              </>
+            ) : (
+              <>
+                <path d="M240 253l10-102" strokeWidth="5" />
+                <path d="M250 112l15 21-17 23-13-23Z" fill={weapon.colors[0]} />
+                <path d="M250 112l-2 44M235 133h30" stroke={weapon.colors[2]} />
+              </>
+            )}
+          </g>
+        )}
         {level >= 5 && (
           <g className="hero-sparks" stroke={color} strokeWidth="2">
             <path d="M57 101V117M49 109H65M259 224V240M251 232H267" />

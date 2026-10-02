@@ -36,6 +36,9 @@ export async function GET() {
         accessory: characters.accessory,
         skin: characters.skin,
         aura: characters.aura,
+        weapon: characters.weapon,
+        trinket: characters.trinket,
+        vfx: characters.vfx,
       })
       .from(communityProfiles)
       .innerJoin(profiles, eq(profiles.userId, communityProfiles.userId))
@@ -129,6 +132,9 @@ export async function GET() {
             accessory: m.accessory ?? "none",
             skin: m.skin ?? "default",
             aura: m.aura ?? "none",
+            weapon: m.weapon ?? "unarmed",
+            trinket: m.trinket ?? "no-trinket",
+            vfx: m.vfx ?? "no-vfx",
             animations: false,
           },
         };

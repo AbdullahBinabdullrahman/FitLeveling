@@ -10,7 +10,7 @@ import {
 } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { fail } from "@/lib/http";
-import { COSMETICS, cosmeticById } from "@/lib/community";
+import { COSMETICS, cosmeticById, resolveCosmeticSlot } from "@/lib/community";
 export async function GET() {
   try {
     const id = await requireUser();
@@ -33,8 +33,7 @@ export async function POST(request: NextRequest) {
       .object({ action: z.enum(["buy", "equip"]), itemId: z.string().max(50) })
       .parse(await request.json());
     const item = cosmeticById(itemId);
-    if (!item && itemId !== "default" && itemId !== "none")
-      throw new Error("NOT_FOUND");
+    if (!resolveCosmeticSlot(itemId)) throw new Error("NOT_FOUND");
     const result = await db.transaction(async (tx) => {
       const [profile] = await tx
         .select()
@@ -59,14 +58,12 @@ export async function POST(request: NextRequest) {
         await tx
           .insert(cosmeticInventory)
           .values({ userId, itemId, pricePaid: item.price });
-        await tx
-          .insert(coinTransactions)
-          .values({
-            userId,
-            amount: -item.price,
-            reason: `Cosmetic: ${item.name}`,
-            eventKey: `cosmetic:${userId}:${itemId}`,
-          });
+        await tx.insert(coinTransactions).values({
+          userId,
+          amount: -item.price,
+          reason: `Cosmetic: ${item.name}`,
+          eventKey: `cosmetic:${userId}:${itemId}`,
+        });
         await tx
           .update(profiles)
           .set({ coins: profile.coins - item.price })
@@ -75,7 +72,7 @@ export async function POST(request: NextRequest) {
       }
       if (item && !owned)
         throw new Error("Unlock this item before equipping it");
-      const slot = item?.slot ?? (itemId === "default" ? "skin" : "aura");
+      const slot = resolveCosmeticSlot(itemId)!;
       await tx
         .insert(characters)
         .values({ userId, [slot]: itemId })

@@ -38,6 +38,9 @@ export type Character = {
   animations: boolean;
   skin?: string;
   aura?: string;
+  weapon?: string;
+  trinket?: string;
+  vfx?: string;
 };
 export const DEFAULT_CHARACTER: Character = {
   name: "Nova",

@@ -201,6 +201,9 @@ export const characters = pgTable("characters", {
   animations: boolean("animations").default(true).notNull(),
   skin: text("skin").default("default").notNull(),
   aura: text("aura").default("none").notNull(),
+  weapon: text("weapon").default("unarmed").notNull(),
+  trinket: text("trinket").default("no-trinket").notNull(),
+  vfx: text("vfx").default("no-vfx").notNull(),
 });
 export const coachSettings = pgTable("coach_settings", {
   userId: uuid("user_id")

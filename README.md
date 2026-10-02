@@ -92,3 +92,13 @@ Migration `0004_majestic_gravity.sql` adds community profiles, weekly cheers, pe
 - **Purchases:** prices are server-defined; each purchase locks the same profile row used by other coin writes. Ownership and the debit ledger entry are recorded in one transaction. Retrying an owned purchase does not spend coins twice. Both equip routes enforce ownership. Skins give no scoring advantage.
 
 Manual acceptance checks after migrating: opt in using an alias, verify your real weekly score and shared rank, cheer a second member twice and confirm one cheer, buy an affordable item and retry the purchase to confirm one debit, equip skin and aura together, update the hero’s name without losing cosmetics, then leave the community and confirm the profile disappears. Tests cover scoring caps, recovery check-ins, league thresholds and catalog integrity; live multi-account database/purchase testing is still required.
+
+## Equipment and workout mission briefing
+
+Migration `0005_certain_cobalt_man.sql` extends character loadouts with independent `weapon`, `trinket` and `vfx` slots. Apply it after `0004` and before deploying this update. Existing characters default to no equipment in these slots.
+
+The collection now includes three cosmetic weapons (Ion Saber, Solar Hammer, Prism Staff), two accessories (Scout Jetpack, Star Visor), and two animated effects (Ion Pulse, Ember Sparks). All use earned game coins and the existing transactional inventory/coin ledger. There is no real-money coin purchase. Skin, aura, weapon, accessory and VFX can be combined, and cleared separately. Effects respect the character animation toggle and the operating system's reduced-motion preference. Ownership is enforced both when equipping from the shop and when saving the hero.
+
+The Train screen shows your equipped companion and a mission briefing, then switches to mission-in-progress after a successful workout start. It displays the existing reward rules: 100 base XP and 20 base coins on completion, 25 bonus XP for logging all prescribed sets, and possible personal-record bonuses. Starting a session does not award currency. The existing completion flow supplies the actual reward celebration.
+
+Player resale and item trading are intentionally deferred to a later release. They will require transferable item identities, transaction history, locked balances and ownership, and rules for duplicates and equipped items before enabling exchange.

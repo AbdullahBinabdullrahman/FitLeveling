@@ -24,6 +24,7 @@ import {
   YAxis,
   Tooltip,
 } from "recharts";
+import CharacterArt from "./game/Character";
 import Dashboard from "./game/Dashboard";
 import CoachView from "./game/CoachView";
 import CommunityView from "./game/CommunityView";
@@ -353,6 +354,7 @@ export default function App() {
           )}
           {tab === "Train" && (
             <Train
+              game={game}
               data={data}
               session={session}
               selected={selected}
@@ -515,6 +517,7 @@ function Auth({ onDone }: { onDone: (u: User) => void }) {
   );
 }
 function Train({
+  game,
   data,
   session,
   selected,
@@ -523,6 +526,7 @@ function Train({
   setSession,
   celebrate,
 }: {
+  game: GameData;
   data: Workout | null;
   session: { id: string; templateId: string } | null;
   selected: string | null;
@@ -541,6 +545,7 @@ function Train({
   >({});
   const [pending, setPending] = useState<string | null>(null);
   const [restToken, setRestToken] = useState(0);
+  const [missionEntry, setMissionEntry] = useState(false);
   useEffect(() => {
     setValues({});
   }, [session?.id]);
@@ -644,6 +649,7 @@ function Train({
               }>("workouts", "POST", { templateId: chosen });
               setRestToken(0);
               setSession(r.session);
+              setMissionEntry(true);
             })
           }
         >
@@ -651,6 +657,46 @@ function Train({
           <Dumbbell size={17} />
         </button>
       )}
+      <section
+        className={`workout-hero card ${missionEntry ? "mission-entered" : ""}`}
+      >
+        <CharacterArt
+          character={game.character}
+          level={game.stats.level}
+          compact
+          interactive={false}
+          mood={session ? "power" : "idle"}
+        />
+        <div>
+          <div className="label text-violet-300">
+            {session ? "Mission in progress" : "Mission briefing"}
+          </div>
+          <h3 className="text-2xl font-bold mt-2">
+            {session
+              ? `${game.character.name} is training with you.`
+              : "Your next adventure starts here."}
+          </h3>
+          <p className="muted text-sm mt-2">
+            {session
+              ? "Every logged set brings this mission closer to completion. Rest when you need it."
+              : "Bring your equipped gear. Complete at least three sets to finish the mission and collect your rewards."}
+          </p>
+          <div className="flex flex-wrap gap-3 mt-3">
+            <span className="soft-badge">100 base XP</span>
+            <span className="soft-badge">20 base coins</span>
+            <span className="soft-badge">+25 XP for all sets</span>
+          </div>
+          <p className="muted text-xs mt-3">
+            Rewards are credited when you complete the mission. Personal records
+            can earn extra XP and coins.
+          </p>
+          {missionEntry && (
+            <p role="status" className="text-teal-300 text-sm mt-2">
+              Mission started. Let’s earn your next unlock.
+            </p>
+          )}
+        </div>
+      </section>
       {session && <RestTimer startToken={restToken} />}
       <div className="grid gap-4">
         {items.map((item) => (

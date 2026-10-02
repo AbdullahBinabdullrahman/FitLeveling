@@ -2094,3 +2094,91 @@ input[type="checkbox"] {
     padding: 7px 10px;
   }
 }
+.workout-hero {
+  display: grid;
+  grid-template-columns: 150px 1fr;
+  gap: 24px;
+  align-items: center;
+  margin-bottom: 24px;
+  background:
+    radial-gradient(ellipse at 15% 50%, #7353af22, transparent 60%), #191f31;
+}
+.workout-hero .character-stage {
+  width: 150px;
+}
+.mission-entered {
+  animation: mission-arrive 0.7s ease-out;
+}
+.hero-vfx {
+  pointer-events: none;
+  opacity: 0.65;
+}
+.vfx-animated .vfx-pulse {
+  transform-origin: 160px 176px;
+  animation: energy-pulse 3s ease-in-out infinite;
+}
+.vfx-animated .vfx-pulse.delayed {
+  animation-delay: 1.5s;
+}
+.vfx-animated .vfx-spark {
+  animation: ember-rise 2.8s ease-in-out infinite;
+}
+.hero-weapon {
+  filter: drop-shadow(0 0 3px #b89aff66);
+}
+@keyframes energy-pulse {
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: scale(0.93);
+  }
+  50% {
+    opacity: 0.75;
+    transform: scale(1);
+  }
+}
+@keyframes ember-rise {
+  0%,
+  100% {
+    opacity: 0.2;
+    transform: translateY(5px);
+  }
+  50% {
+    opacity: 0.9;
+    transform: translateY(-12px);
+  }
+}
+@keyframes mission-arrive {
+  from {
+    opacity: 0.4;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@media (max-width: 600px) {
+  .workout-hero {
+    grid-template-columns: 100px 1fr;
+    gap: 12px;
+  }
+  .workout-hero .character-stage {
+    width: 100px;
+  }
+  .workout-hero h3 {
+    font-size: 18px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vfx-animated .vfx-pulse,
+  .vfx-animated .vfx-spark,
+  .mission-entered {
+    animation: none;
+  }
+}
+.reduce-motion .vfx-animated .vfx-pulse,
+.reduce-motion .vfx-animated .vfx-spark,
+.reduce-motion .mission-entered {
+  animation: none;
+}

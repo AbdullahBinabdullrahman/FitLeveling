@@ -31,6 +31,9 @@ const characterInput = z.object({
   animations: z.boolean(),
   skin: z.string().max(50).optional(),
   aura: z.string().max(50).optional(),
+  weapon: z.string().max(50).optional(),
+  trinket: z.string().max(50).optional(),
+  vfx: z.string().max(50).optional(),
 });
 export async function PATCH(request: NextRequest) {
   try {
@@ -44,8 +47,21 @@ export async function PATCH(request: NextRequest) {
     for (const [slot, itemId] of [
       ["skin", input.skin],
       ["aura", input.aura],
+      ["weapon", input.weapon],
+      ["trinket", input.trinket],
+      ["vfx", input.vfx],
     ] as const) {
-      if (!itemId || itemId === (slot === "skin" ? "default" : "none"))
+      if (
+        !itemId ||
+        itemId ===
+          {
+            skin: "default",
+            aura: "none",
+            weapon: "unarmed",
+            trinket: "no-trinket",
+            vfx: "no-vfx",
+          }[slot]
+      )
         continue;
       const item = cosmeticById(itemId);
       const [owned] = await db
