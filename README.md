@@ -79,3 +79,16 @@ Run `npm run db:migrate` against your configured `DATABASE_URL` before using thi
 Generating proposals sends your saved fitness records to your selected AI provider. The conversational AI also reads your profile, recent scans/check-ins and latest applied plan. The built-in companion continues to use preset guidance. AI outputs are validated, but still require your review. This is a personal AI coaching workflow; separate human-coach accounts and client assignment are not implemented.
 
 Validation: `npm run typecheck`, `npm test`, and `npm run build`. Database-backed behavior requires a configured PostgreSQL instance and migrations; AI generation additionally requires a supported model and key.
+
+## Community and cosmetic collection
+
+Migration `0004_majestic_gravity.sql` adds community profiles, weekly cheers, permanent cosmetic inventory, and character skin/aura slots. Apply this migration before deploying this release; older databases need `0000`–`0003` first.
+
+- **Community:** members opt in with a public alias. The board shares their hero, level and capped weekly habit totals with authenticated users. It excludes email, body measurements, scan attachments and coach notes. Leaving removes the profile from standings. Scores are based on self-reported app logs, not verified athletic performance.
+- **Scoring:** 100 points per distinct training day, 20 per nutrition logging day, and 20 per coach check-in day; each category counts at most three days (420 points maximum). Everyone uses Monday-to-Monday weeks in `Asia/Riyadh`. Future-dated check-ins and nutrition logs do not count. Ties share a rank. The top 50 members are shown, and your own standing remains available below the cutoff.
+- **Shared mission:** weekly guild progress adds members’ scores against a target of `max(420, members × 200)`. This is a cooperative progress display, with no extra XP/coin payout. Target changes with membership.
+- **Cheers:** members can cheer each other once per week. Cheers do not award score or currency. This first community release has no public posts or direct messages.
+- **Collection:** five skins and two auras are defined in `src/lib/community.ts`. Prices range from 120 to 600 coins. SVG character art shows each skin’s plating details and aura. Purchased items stay in inventory permanently, and skin/aura slots can be equipped separately.
+- **Purchases:** prices are server-defined; each purchase locks the same profile row used by other coin writes. Ownership and the debit ledger entry are recorded in one transaction. Retrying an owned purchase does not spend coins twice. Both equip routes enforce ownership. Skins give no scoring advantage.
+
+Manual acceptance checks after migrating: opt in using an alias, verify your real weekly score and shared rank, cheer a second member twice and confirm one cheer, buy an affordable item and retry the purchase to confirm one debit, equip skin and aura together, update the hero’s name without losing cosmetics, then leave the community and confirm the profile disappears. Tests cover scoring caps, recovery check-ins, league thresholds and catalog integrity; live multi-account database/purchase testing is still required.

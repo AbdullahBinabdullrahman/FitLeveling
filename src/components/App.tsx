@@ -14,6 +14,7 @@ import {
   Pause,
   Play,
   TimerReset,
+  Users,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -25,6 +26,8 @@ import {
 } from "recharts";
 import Dashboard from "./game/Dashboard";
 import CoachView from "./game/CoachView";
+import CommunityView from "./game/CommunityView";
+import CosmeticShop from "./game/CosmeticShop";
 import { CharacterView, Celebration, QuestsView } from "./game/GameViews";
 import type { Character, GameData, Quest, CelebrationData } from "@/lib/game";
 import { dayKey } from "@/lib/game";
@@ -98,6 +101,7 @@ const NAV = [
   { name: "Quests", icon: Swords },
   { name: "Hero", icon: Sparkles },
   { name: "Coach", icon: Bot },
+  { name: "Community", icon: Users },
   { name: "Progress", icon: TrendingUp },
   { name: "Shop", icon: Gift },
   { name: "Profile", icon: UserRound },
@@ -133,7 +137,11 @@ export default function App() {
     setRewards(rs.rewards);
     setGame(g);
     setSession(w.active);
-    setSelected((previous) => w.active?.templateId ?? (w.plan.some(p => p.templateId === previous) ? previous : null));
+    setSelected(
+      (previous) =>
+        w.active?.templateId ??
+        (w.plan.some((p) => p.templateId === previous) ? previous : null),
+    );
   }, []);
   useEffect(() => {
     api<{ user: User | null }>("auth")
@@ -340,7 +348,9 @@ export default function App() {
           {tab === "Hero" && (
             <CharacterView key={user.id} game={game} onSave={saveCharacter} />
           )}
-          {tab === "Coach" && <CoachView key={user.id} game={game} onPlanApplied={load} />}
+          {tab === "Coach" && (
+            <CoachView key={user.id} game={game} onPlanApplied={load} />
+          )}
           {tab === "Train" && (
             <Train
               data={data}
@@ -355,8 +365,23 @@ export default function App() {
           {tab === "Progress" && (
             <Progress weights={weights} scans={scans} data={data} act={act} />
           )}
+          {tab === "Community" && <CommunityView onNavigate={setTab} />}
           {tab === "Shop" && (
-            <Shop rewards={rewards} coins={data.profile.coins} act={act} />
+            <>
+              <CosmeticShop game={game} onChange={load} />
+              <details className="card mt-8">
+                <summary className="font-bold cursor-pointer">
+                  Personal rewards
+                </summary>
+                <div className="mt-5">
+                  <Shop
+                    rewards={rewards}
+                    coins={data.profile.coins}
+                    act={act}
+                  />
+                </div>
+              </details>
+            </>
           )}
           {tab === "Profile" && (
             <ProfileView

@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import {
   characters,
+  cosmeticInventory,
   coinTransactions,
   profiles,
   xpTransactions,
@@ -12,6 +13,7 @@ import { requireUser } from "@/lib/auth";
 import { fail } from "@/lib/http";
 import { readGame } from "@/lib/game-server";
 import { ACCESSORIES } from "@/lib/game";
+import { cosmeticById } from "@/lib/community";
 import { levelFromXp } from "@/lib/domain";
 
 export async function GET() {
@@ -27,6 +29,8 @@ const characterInput = z.object({
   color: z.enum(["mint", "violet", "amber", "rose"]),
   accessory: z.enum(["none", "cape", "halo", "crown"]),
   animations: z.boolean(),
+  skin: z.string().max(50).optional(),
+  aura: z.string().max(50).optional(),
 });
 export async function PATCH(request: NextRequest) {
   try {
@@ -37,6 +41,25 @@ export async function PATCH(request: NextRequest) {
       .from(profiles)
       .where(eq(profiles.userId, userId));
     if (!profile) throw new Error("NOT_FOUND");
+    for (const [slot, itemId] of [
+      ["skin", input.skin],
+      ["aura", input.aura],
+    ] as const) {
+      if (!itemId || itemId === (slot === "skin" ? "default" : "none"))
+        continue;
+      const item = cosmeticById(itemId);
+      const [owned] = await db
+        .select()
+        .from(cosmeticInventory)
+        .where(
+          and(
+            eq(cosmeticInventory.userId, userId),
+            eq(cosmeticInventory.itemId, itemId),
+          ),
+        );
+      if (!item || item.slot !== slot || !owned)
+        throw new Error("Unlock this item in the shop first");
+    }
     const accessory = ACCESSORIES.find((a) => a.id === input.accessory)!;
     if (profile.level < accessory.level)
       throw new Error(
@@ -74,22 +97,18 @@ export async function POST(request: NextRequest) {
       const lifetimeXp = profile.lifetimeXp + quest.xp;
       const level = levelFromXp(lifetimeXp).level;
       const coins = quest.coins + (level - profile.level) * 50;
-      await tx
-        .insert(xpTransactions)
-        .values({
-          userId,
-          amount: quest.xp,
-          reason: quest.title,
-          eventKey: quest.eventKey,
-        });
-      await tx
-        .insert(coinTransactions)
-        .values({
-          userId,
-          amount: coins,
-          reason: quest.title,
-          eventKey: quest.eventKey,
-        });
+      await tx.insert(xpTransactions).values({
+        userId,
+        amount: quest.xp,
+        reason: quest.title,
+        eventKey: quest.eventKey,
+      });
+      await tx.insert(coinTransactions).values({
+        userId,
+        amount: coins,
+        reason: quest.title,
+        eventKey: quest.eventKey,
+      });
       await tx
         .update(profiles)
         .set({ lifetimeXp, level, coins: profile.coins + coins })

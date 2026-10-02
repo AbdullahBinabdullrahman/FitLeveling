@@ -36,6 +36,8 @@ export type Character = {
   color: (typeof COLORS)[number]["id"];
   accessory: (typeof ACCESSORIES)[number]["id"];
   animations: boolean;
+  skin?: string;
+  aura?: string;
 };
 export const DEFAULT_CHARACTER: Character = {
   name: "Nova",
