@@ -32,3 +32,14 @@ export const coachSettings = pgTable('coach_settings', {
   encryptedApiKey: text('encrypted_api_key'),
   lastRequestAt: timestamp('last_request_at', { withTimezone: true }),
 });
+
+export const coachCheckins = pgTable('coach_checkins', {
+  id: id(), userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  day: date('day').notNull(), goal: text('goal').notNull(), energy: integer('energy').notNull(),
+  sleepHours: numeric('sleep_hours').notNull(), notes: text('notes').notNull(),
+  preferences: text('preferences').notNull(), createdAt: created(),
+}, t => [uniqueIndex('coach_checkin_user_day').on(t.userId, t.day)]);
+export const trainingVersions = pgTable('training_versions', {
+  id: id(), userId: uuid('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  plan: jsonb('plan').notNull(), context: jsonb('context').notNull(), createdAt: created(),
+});

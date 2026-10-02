@@ -17,6 +17,7 @@ import {
 } from "@/lib/coach-provider";
 import type { GameData } from "@/lib/game";
 import Character from "./Character";
+import TrainingWorkspace from "./TrainingWorkspace";
 
 type Settings = {
   provider: CoachMode;
@@ -45,7 +46,7 @@ async function request<T>(
     throw new Error(data.error ?? "Your coach could not connect");
   return data;
 }
-export default function CoachView({ game }: { game: GameData }) {
+export default function CoachView({ game, onPlanApplied }: { game: GameData; onPlanApplied: () => Promise<void> }) {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [provider, setProvider] = useState<CoachMode>("builtin");
   const [model, setModel] = useState("");
@@ -188,6 +189,7 @@ export default function CoachView({ game }: { game: GameData }) {
           <Settings2 size={16} /> AI settings <ChevronDown size={14} />
         </button>
       </div>
+      <TrainingWorkspace onPlanApplied={onPlanApplied} />
       {showSettings && (
         <section className="card mb-5 space-y-4">
           <div className="flex items-center gap-2 font-bold">
@@ -196,8 +198,8 @@ export default function CoachView({ game }: { game: GameData }) {
           </div>
           <p className="muted text-sm">
             Use the built-in coach, or connect OpenAI or Groq for conversational
-            coaching. Your selected provider receives your chat and a summary of
-            your game progress. API usage is billed to the connected key.
+            coaching. Your selected provider receives your chat, profile, recent InBody scans, daily updates,
+            current training plan and game progress. API usage is billed to the connected key.
           </p>
           <div className="grid gap-4 md:grid-cols-2">
             <label className="field">
@@ -361,8 +363,8 @@ export default function CoachView({ game }: { game: GameData }) {
           />
           <h3 className="text-xl font-bold">You set the pace.</h3>
           <p className="muted mt-2 text-sm">
-            Your companion knows your level, completed workouts, and current
-            quests. Your rest days count as taking care of yourself.
+            Your AI coach can read your saved goal, recent scans, daily updates,
+            training plan and progress. Your rest days count as taking care of yourself.
           </p>
           <div className="mt-5 space-y-2">
             <div className="context-row">

@@ -63,3 +63,19 @@ Personal keys are encrypted with AES-256-GCM using a key derived from `SESSION_S
 The integration uses the [OpenAI Responses API](https://developers.openai.com/api/docs/guides/text) and discovers model IDs through the [Models API](https://developers.openai.com/api/reference/resources/models/methods/list). Availability and suitability depend on your API account and selected model.
 
 Provider selection controls both model discovery and chat routing. Groq uses its own API endpoint; Groq keys cannot authenticate with OpenAI. Model discovery tests a draft key without saving it, and saving an AI connection verifies access before replacing existing settings. Groq model IDs retain their namespace, for example `openai/gpt-oss-120b`. See [Groq’s Responses API documentation](https://console.groq.com/docs/responses-api).
+
+## Adaptive coach training workspace
+
+The Coach screen now includes **Adaptive training**:
+
+1. Save a dated check-in with your energy, sleep, goal, recovery notes and exercise/equipment preferences. Saving a check-in updates the profile goal without changing nutrition targets.
+2. Add InBody scans using the existing body tracking screen. The coach reads the latest three scans, up to 14 daily updates, your profile, current rotation and recent completed sets when generating a proposal.
+3. Connect an OpenAI or Groq model in AI settings, then choose **Generate updated plan**. This saves the daily update and drafts a plan; it does not activate it. Manual editing works without an AI key.
+4. Review or edit days, exercises, sets and rep ranges, then choose **Apply reviewed plan**. The server validates the plan and saves new exercise catalog entries and user-owned templates in one transaction. Your personalized rotation replaces the default rotation.
+5. Use Plan history to review a previous version and apply it as a new version. Existing sessions retain their original templates and exercise prescriptions. Concurrent stale plan edits are rejected.
+
+Run `npm run db:migrate` against your configured `DATABASE_URL` before using this feature. Migration `0003_naive_susan_delgado.sql` adds `coach_checkins` and `training_versions`. Configure the environment using `.env.example`; no database or API credentials are included in this checkout.
+
+Generating proposals sends your saved fitness records to your selected AI provider. The conversational AI also reads your profile, recent scans/check-ins and latest applied plan. The built-in companion continues to use preset guidance. AI outputs are validated, but still require your review. This is a personal AI coaching workflow; separate human-coach accounts and client assignment are not implemented.
+
+Validation: `npm run typecheck`, `npm test`, and `npm run build`. Database-backed behavior requires a configured PostgreSQL instance and migrations; AI generation additionally requires a supported model and key.

@@ -133,7 +133,7 @@ export default function App() {
     setRewards(rs.rewards);
     setGame(g);
     setSession(w.active);
-    setSelected((previous) => w.active?.templateId ?? previous);
+    setSelected((previous) => w.active?.templateId ?? (w.plan.some(p => p.templateId === previous) ? previous : null));
   }, []);
   useEffect(() => {
     api<{ user: User | null }>("auth")
@@ -340,7 +340,7 @@ export default function App() {
           {tab === "Hero" && (
             <CharacterView key={user.id} game={game} onSave={saveCharacter} />
           )}
-          {tab === "Coach" && <CoachView key={user.id} game={game} />}
+          {tab === "Coach" && <CoachView key={user.id} game={game} onPlanApplied={load} />}
           {tab === "Train" && (
             <Train
               data={data}
