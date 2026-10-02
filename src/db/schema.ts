@@ -331,3 +331,55 @@ export const directMessages = pgTable(
     index("message_conversation_order").on(t.friendshipId, t.id),
   ],
 ).enableRLS();
+
+export const guilds = pgTable("guilds", {
+  id: id(),
+  ownerId: uuid("owner_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  hobbies: jsonb("hobbies").$type<string[]>().notNull().default([]),
+  createdAt: created(),
+}).enableRLS();
+export const guildMembers = pgTable(
+  "guild_members",
+  {
+    id: id(),
+    guildId: uuid("guild_id")
+      .notNull()
+      .references(() => guilds.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    status: text("status").notNull().default("pending"),
+    createdAt: created(),
+  },
+  (t) => [uniqueIndex("guild_member_pair").on(t.guildId, t.userId)],
+).enableRLS();
+export const hobbies = pgTable("hobbies", {
+  userId: uuid("user_id")
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
+  tags: jsonb("tags").$type<string[]>().notNull().default([]),
+}).enableRLS();
+export const habits = pgTable("habits", {
+  id: id(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  active: boolean("active").notNull().default(true),
+  createdAt: created(),
+}).enableRLS();
+export const habitChecks = pgTable(
+  "habit_checks",
+  {
+    id: id(),
+    habitId: uuid("habit_id")
+      .notNull()
+      .references(() => habits.id, { onDelete: "cascade" }),
+    day: date("day").notNull(),
+  },
+  (t) => [uniqueIndex("habit_day").on(t.habitId, t.day)],
+).enableRLS();

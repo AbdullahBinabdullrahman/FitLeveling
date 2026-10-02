@@ -274,11 +274,11 @@ export default function FriendsPanel({
                 Choose a community alias to be discoverable
               </h3>
               <p className="muted mt-2">
-                Join the guild to find explorers and send requests. Existing
+                Join the community to find explorers and send requests. Existing
                 friends and chats remain available.
               </p>
               <button className="btn mt-4" onClick={onJoin}>
-                Join the guild
+                Join the community
               </button>
             </section>
           )}
@@ -335,8 +335,8 @@ export default function FriendsPanel({
               <section className="card">
                 <h3 className="text-xl font-bold">Find explorers</h3>
                 <p className="muted text-sm mt-2">
-                  Search public aliases. No emails or private profile details
-                  are shared.
+                  Search nicknames or an exact email. Emails and private profile
+                  details are shared.
                 </p>
                 <form
                   className="friend-search mt-4"
@@ -352,8 +352,8 @@ export default function FriendsPanel({
                     id="explorer-search"
                     value={query}
                     minLength={2}
-                    maxLength={50}
-                    placeholder="At least 2 characters"
+                    maxLength={254}
+                    placeholder="Nickname or full email"
                     onChange={(e) => setQuery(e.target.value)}
                   />
                   <button

@@ -2320,3 +2320,67 @@ input[type="checkbox"] {
     height: 360px;
   }
 }
+
+.guild-workspace {
+  display: grid;
+  gap: 18px;
+  padding: 20px 0;
+}
+.guild-workspace form {
+  display: grid;
+  gap: 12px;
+}
+.guild-workspace input:not([type="checkbox"]),
+.guild-workspace textarea,
+.guild-workspace select {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #42506a;
+  border-radius: 12px;
+  background: #101b2b;
+  color: #eef5ff;
+}
+.interest-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+.interest-card {
+  padding: 20px;
+  border: 1px solid #42506a;
+  border-radius: 18px;
+  background: #142136;
+  color: #eef5ff;
+  text-align: left;
+}
+.interest-row {
+  display: flex !important;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.interest-row span,
+.interest-row label {
+  flex: 1;
+}
+.interest-row small {
+  display: block;
+}
+.guild-workspace button {
+  padding: 10px 14px;
+  border-radius: 12px;
+}
+.guild-workspace button:disabled {
+  opacity: 0.5;
+}
+.guild-workspace input[type="checkbox"] {
+  margin-right: 10px;
+}
+.guild-workspace summary {
+  cursor: pointer;
+  padding: 12px;
+}
+.guild-workspace label {
+  display: grid;
+  gap: 6px;
+}

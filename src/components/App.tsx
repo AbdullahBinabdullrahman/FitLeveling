@@ -27,6 +27,7 @@ import {
 import CharacterArt from "./game/Character";
 import Dashboard from "./game/Dashboard";
 import CoachView from "./game/CoachView";
+import HabitsView from "./game/HabitsView";
 import CommunityView from "./game/CommunityView";
 import CosmeticShop from "./game/CosmeticShop";
 import { CharacterView, Celebration, QuestsView } from "./game/GameViews";
@@ -103,6 +104,7 @@ const NAV = [
   { name: "Hero", icon: Sparkles },
   { name: "Coach", icon: Bot },
   { name: "Community", icon: Users },
+  { name: "Habits", icon: Users },
   { name: "Progress", icon: TrendingUp },
   { name: "Shop", icon: Gift },
   { name: "Profile", icon: UserRound },
@@ -368,6 +370,7 @@ export default function App() {
             <Progress weights={weights} scans={scans} data={data} act={act} />
           )}
           {tab === "Community" && <CommunityView onNavigate={setTab} />}
+          {tab === "Habits" && <HabitsView />}
           {tab === "Shop" && (
             <>
               <CosmeticShop game={game} onChange={load} />

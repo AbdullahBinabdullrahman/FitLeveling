@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { and, eq, ne, or, sql, ilike } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { friendships, communityProfiles, profiles } from "@/db/schema";
+import { friendships, communityProfiles, users } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { fail } from "@/lib/http";
 import { friendPair, transition } from "@/lib/friends";
@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     const query = z
       .string()
       .trim()
-      .max(50)
+      .max(254)
       .parse(request.nextUrl.searchParams.get("q") ?? "");
     const rows = await db
       .select({
@@ -55,13 +55,16 @@ export async function GET(request: NextRequest) {
               alias: communityProfiles.alias,
             })
             .from(communityProfiles)
+            .innerJoin(users, eq(users.id, communityProfiles.userId))
             .where(
               and(
                 ne(communityProfiles.userId, userId),
-                ilike(
-                  communityProfiles.alias,
-                  `%${query.replace(/[\\%_]/g, "\\$&")}%`,
-                ),
+                query.includes("@")
+                  ? sql`lower(${users.email}) = ${query.toLowerCase()}`
+                  : ilike(
+                      communityProfiles.alias,
+                      `%${query.replace(/[\\%_]/g, "\\$&")}%`,
+                    ),
               ),
             )
             .limit(20)

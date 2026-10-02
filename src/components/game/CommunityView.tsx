@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { Trophy, Heart, Users, Sparkles, ArrowRight } from "lucide-react";
 import type { Character as CharacterData } from "@/lib/game";
 import Character from "./Character";
+import GuildsPanel from "./GuildsPanel";
 import FriendsPanel from "./FriendsPanel";
 type Member = {
   userId: string;
@@ -82,7 +83,8 @@ export default function CommunityView({
         aria-label="Community sections"
       >
         {[
-          ["guild", "Guild"],
+          ["guild", "Guilds"],
+          ["leaderboard", "Leaderboard"],
           ["friends", "Friends"],
           ["requests", "Friend requests"],
           ["chat", "Chat"],
@@ -101,18 +103,19 @@ export default function CommunityView({
           Skins & equipment ↗
         </button>
       </div>
-      {socialTab !== "guild" && (
+      {socialTab === "guild" && <GuildsPanel />}
+      {["friends", "requests", "chat"].includes(socialTab) && (
         <FriendsPanel
           view={socialTab}
           onView={setSocialTab}
-          onJoin={() => setSocialTab("guild")}
+          onJoin={() => setSocialTab("leaderboard")}
         />
       )}
-      <div hidden={socialTab !== "guild"}>
+      <div hidden={socialTab !== "leaderboard"}>
         <div className="section-heading">
           <div>
             <div className="label text-violet-300">Better together</div>
-            <h2>The explorers’ guild</h2>
+            <h2>Community leaderboard</h2>
             <p className="muted">
               A little friendly competition. A lot of encouragement.
             </p>
@@ -137,7 +140,7 @@ export default function CommunityView({
             <span className="label">Weekly community mission</span>
             <h3>Light up the constellation.</h3>
             <p>
-              Every habit point brings the guild closer. Show up in your own
+              Every habit point brings the community closer. Show up in your own
               way.
             </p>
             <div className="game-progress mt-5">
@@ -181,7 +184,7 @@ export default function CommunityView({
         </div>
         {!data && !error && (
           <section className="card" role="status">
-            Loading the guild…
+            Loading the community…
           </section>
         )}
         {data && (
@@ -272,7 +275,7 @@ export default function CommunityView({
             <aside className="space-y-5">
               <section className="card">
                 <div className="label">
-                  {data.member ? "Your weekly journey" : "Join the guild"}
+                  {data.member ? "Your weekly journey" : "Join the community"}
                 </div>
                 <h3 className="text-2xl font-bold mt-2">
                   {you
