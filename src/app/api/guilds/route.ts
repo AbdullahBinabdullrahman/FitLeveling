@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { and, eq, ilike, sql } from "drizzle-orm";
+import { and, eq, ilike, sql, or } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import {
@@ -12,6 +12,7 @@ import {
 import { requireUser } from "@/lib/auth";
 import { fail } from "@/lib/http";
 import { membershipChange } from "@/lib/guilds";
+import { nicknameSchema } from "@/lib/community-profile";
 import { tagsSchema } from "@/lib/interests";
 const details = {
   name: z.string().trim().min(2).max(48),
@@ -25,22 +26,40 @@ export async function GET(r: NextRequest) {
         .string()
         .max(80)
         .parse(r.nextUrl.searchParams.get("q") ?? "");
-    const list = await db
-      .select({
-        id: guilds.id,
-        name: guilds.name,
-        description: guilds.description,
-        hobbies: guilds.hobbies,
-        ownerId: guilds.ownerId,
-        count: sql<number>`(select count(*)::int from guild_members m where m.guild_id=${guilds.id} and m.status='accepted')`,
-        status: sql<
-          string | null
-        >`(select status from guild_members m where m.guild_id=${guilds.id} and m.user_id=${u})`,
-      })
-      .from(guilds)
-      .where(ilike(guilds.name, `%${q.replace(/[\%_]/g, "\\$&")}%`))
-      .orderBy(guilds.name)
-      .limit(100);
+    const summary = {
+      id: guilds.id,
+      name: guilds.name,
+      description: guilds.description,
+      hobbies: guilds.hobbies,
+      ownerId: guilds.ownerId,
+      count: sql<number>`(select count(*)::int from guild_members m where m.guild_id=${guilds.id} and m.status='accepted')`,
+      status: sql<
+        string | null
+      >`(select status from guild_members m where m.guild_id=${guilds.id} and m.user_id=${u})`,
+    };
+    const [list, mine, membership] = await Promise.all([
+      db
+        .select(summary)
+        .from(guilds)
+        .where(ilike(guilds.name, `%${q.replace(/[\%_]/g, "\\$&")}%`))
+        .orderBy(guilds.name)
+        .limit(100),
+      db
+        .select(summary)
+        .from(guilds)
+        .where(
+          or(
+            eq(guilds.ownerId, u),
+            sql`exists(select 1 from guild_members m where m.guild_id=${guilds.id} and m.user_id=${u} and m.status in ('accepted','pending'))`,
+          ),
+        )
+        .orderBy(guilds.name)
+        .limit(100),
+      db
+        .select({ alias: communityProfiles.alias })
+        .from(communityProfiles)
+        .where(eq(communityProfiles.userId, u)),
+    ]);
     let selected = null;
     const id = r.nextUrl.searchParams.get("id");
     if (id) {
@@ -79,7 +98,13 @@ export async function GET(r: NextRequest) {
         : [];
       selected = { ...g, status: m?.status ?? null, members };
     }
-    return NextResponse.json({ userId: u, list, selected });
+    return NextResponse.json({
+      userId: u,
+      list,
+      mine,
+      member: membership[0] ?? null,
+      selected,
+    });
   } catch (e) {
     return fail(e);
   }
@@ -89,7 +114,12 @@ export async function POST(r: NextRequest) {
     const u = await requireUser();
     const v = z
       .discriminatedUnion("action", [
-        z.object({ action: z.literal("create"), ...details }),
+        z.object({
+          action: z.literal("create"),
+          createId: z.uuid(),
+          alias: nicknameSchema.optional(),
+          ...details,
+        }),
         z.object({ action: z.literal("edit"), id: z.uuid(), ...details }),
         z.object({
           action: z.enum(["apply", "cancel", "leave"]),
@@ -102,27 +132,51 @@ export async function POST(r: NextRequest) {
         }),
       ])
       .parse(await r.json());
-    await db.transaction(async (tx) => {
+    const result = await db.transaction(async (tx) => {
       if (v.action === "create") {
+        await tx.insert(profiles).values({ userId: u }).onConflictDoNothing();
         await tx
           .select()
           .from(profiles)
           .where(eq(profiles.userId, u))
           .for("update");
+        const [existing] = await tx
+          .select()
+          .from(guilds)
+          .where(eq(guilds.id, v.createId));
+        if (existing) {
+          if (existing.ownerId !== u) throw Error("NOT_FOUND");
+          return { guildId: existing.id };
+        }
         const owned = await tx
           .select()
           .from(guilds)
           .where(eq(guilds.ownerId, u));
+        if (
+          owned.some(
+            (g) => g.name.toLocaleLowerCase() === v.name.toLocaleLowerCase(),
+          )
+        )
+          throw Error(
+            "You already own a guild with this name. Open it from My guilds.",
+          );
         if (owned.length >= 3) throw Error("Maximum 3 owned guilds");
         const [member] = await tx
           .select()
           .from(communityProfiles)
           .where(eq(communityProfiles.userId, u));
-        if (!member)
-          throw Error("Choose a community nickname first in Leaderboard");
+        if (!member) {
+          if (!v.alias)
+            throw Error("Choose a public nickname to create your guild");
+          await tx
+            .insert(communityProfiles)
+            .values({ userId: u, alias: v.alias })
+            .onConflictDoNothing();
+        }
         const [g] = await tx
           .insert(guilds)
           .values({
+            id: v.createId,
             ownerId: u,
             name: v.name,
             description: v.description,
@@ -132,7 +186,7 @@ export async function POST(r: NextRequest) {
         await tx
           .insert(guildMembers)
           .values({ guildId: g.id, userId: u, status: "accepted" });
-        return;
+        return { guildId: g.id };
       }
       const [g] = await tx
         .select()
@@ -165,7 +219,7 @@ export async function POST(r: NextRequest) {
         if (m?.status === "accepted" || m?.status === "pending") return;
         await tx
           .insert(guildMembers)
-          .values({ guildId: g.id, userId: u })
+          .values({ guildId: g.id, userId: u, status: "pending" })
           .onConflictDoUpdate({
             target: [guildMembers.guildId, guildMembers.userId],
             set: { status: "pending" },
@@ -202,7 +256,7 @@ export async function POST(r: NextRequest) {
           .set({ status: next })
           .where(eq(guildMembers.id, m!.id));
     });
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, ...result });
   } catch (e) {
     return fail(e);
   }

@@ -103,7 +103,9 @@ export default function CommunityView({
           Skins & equipment ↗
         </button>
       </div>
-      {socialTab === "guild" && <GuildsPanel />}
+      {socialTab === "guild" && (
+        <GuildsPanel onJoin={() => setSocialTab("leaderboard")} />
+      )}
       {["friends", "requests", "chat"].includes(socialTab) && (
         <FriendsPanel
           view={socialTab}
