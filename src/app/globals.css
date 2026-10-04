@@ -2384,3 +2384,71 @@ input[type="checkbox"] {
   display: grid;
   gap: 6px;
 }
+
+.coach-chat-primary {
+  min-height: min(720px, 80vh);
+}
+.coach-chat-primary .chat-messages {
+  min-height: 340px;
+  max-height: 65vh;
+}
+.chat-input textarea {
+  min-width: 0;
+  flex: 1;
+  resize: vertical;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 10px;
+  line-height: 1.5;
+}
+.coach-proposal {
+  margin-top: 14px;
+  padding: 16px;
+  border: 1px solid #4ce0ce55;
+  border-radius: 14px;
+  background: #122f35;
+  color: #eefaff;
+  font-size: 14px;
+}
+.coach-proposal h4 {
+  font-weight: 700;
+  margin: 8px 0;
+}
+.coach-proposal small {
+  display: block;
+  opacity: 0.8;
+  margin-top: 8px;
+}
+.coach-proposal summary {
+  cursor: pointer;
+  margin: 10px 0;
+}
+.proposal-day {
+  padding: 10px 0;
+  border-bottom: 1px solid #ffffff15;
+}
+.proposal-day ul {
+  list-style: disc;
+  padding-left: 18px;
+}
+.coach-chat-primary .chat-message {
+  max-width: 95%;
+}
+@media (max-width: 767px) {
+  .coach-companion {
+    display: none;
+  }
+  .coach-chat-primary .chat-messages {
+    min-height: 300px;
+    max-height: 60vh;
+  }
+  .coach-chat-primary .chat-input {
+    position: sticky;
+    bottom: 76px;
+    background: #131d30;
+  }
+  .coach-proposal .flex {
+    flex-wrap: wrap;
+  }
+}

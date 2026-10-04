@@ -383,3 +383,25 @@ export const habitChecks = pgTable(
   },
   (t) => [uniqueIndex("habit_day").on(t.habitId, t.day)],
 ).enableRLS();
+
+export const coachMessages = pgTable(
+  "coach_messages",
+  {
+    id: id(),
+    position: serial("position").notNull(),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    clientId: uuid("client_id").notNull(),
+    role: text("role").notNull(),
+    content: text("content").notNull(),
+    proposal: jsonb("proposal"),
+    base: jsonb("base"),
+    status: text("status").notNull().default("pending"),
+    createdAt: created(),
+  },
+  (t) => [
+    uniqueIndex("coach_message_retry").on(t.userId, t.clientId, t.role),
+    index("coach_message_history").on(t.userId, t.position),
+  ],
+).enableRLS();

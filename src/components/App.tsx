@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Dumbbell,
   Gift,
@@ -27,6 +27,7 @@ import {
 import CharacterArt from "./game/Character";
 import Dashboard from "./game/Dashboard";
 import CoachView from "./game/CoachView";
+import AccountSettings from "./game/AccountSettings";
 import HabitsView from "./game/HabitsView";
 import CommunityView from "./game/CommunityView";
 import CosmeticShop from "./game/CosmeticShop";
@@ -107,7 +108,7 @@ const NAV = [
   { name: "Habits", icon: Users },
   { name: "Progress", icon: TrendingUp },
   { name: "Shop", icon: Gift },
-  { name: "Profile", icon: UserRound },
+  { name: "Settings", icon: UserRound },
 ];
 export default function App() {
   const [user, setUser] = useState<User | null | undefined>(undefined);
@@ -127,23 +128,27 @@ export default function App() {
   } | null>(null);
   const [selected, setSelected] = useState<string | null>(null);
   const load = useCallback(async () => {
-    const [w, wt, ib, rs, g] = await Promise.all([
+    const [w, wt, ib, rs, g] = await Promise.allSettled([
       api<Workout>("workouts"),
       api<{ weights: Weight[] }>("weight"),
       api<{ scans: Scan[] }>("inbody"),
       api<{ rewards: Reward[] }>("rewards"),
       api<GameData>("game"),
     ]);
-    setData(w);
-    setWeights(wt.weights);
-    setScans(ib.scans);
-    setRewards(rs.rewards);
-    setGame(g);
-    setSession(w.active);
+    if (w.status === "rejected") throw w.reason;
+    if (g.status === "rejected") throw g.reason;
+    setData(w.value);
+    if (wt.status === "fulfilled") setWeights(wt.value.weights);
+    if (ib.status === "fulfilled") setScans(ib.value.scans);
+    if (rs.status === "fulfilled") setRewards(rs.value.rewards);
+    if ([wt, ib, rs].some((r) => r.status === "rejected"))
+      setError("Some records could not load. Refresh to try again.");
+    setGame(g.value);
+    setSession(w.value.active);
     setSelected(
       (previous) =>
-        w.active?.templateId ??
-        (w.plan.some((p) => p.templateId === previous) ? previous : null),
+        w.value.active?.templateId ??
+        (w.value.plan.some((p) => p.templateId === previous) ? previous : null),
     );
   }, []);
   useEffect(() => {
@@ -161,17 +166,26 @@ export default function App() {
     if ("serviceWorker" in navigator)
       navigator.serviceWorker.register("/sw.js").catch(() => {});
   }, [load]);
+  const actionBusy = useRef(false);
   const act = async (fn: () => Promise<unknown>) => {
+    if (actionBusy.current) return false;
+    actionBusy.current = true;
     setError("");
     setMessage("");
     try {
       await fn();
-      await load();
-      setMessage("Saved successfully");
+      try {
+        await load();
+        setMessage("Saved successfully");
+      } catch {
+        setMessage("Saved successfully. Refresh to load your latest data.");
+      }
       return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       return false;
+    } finally {
+      actionBusy.current = false;
     }
   };
   const claim = async (quest: Quest) => {
@@ -252,7 +266,11 @@ export default function App() {
             <Coins size={17} />
             {data?.profile.coins ?? 0}
           </button>
-          <button className="profile-chip" onClick={() => setTab("Profile")}>
+          <button
+            className="profile-chip"
+            aria-label="Open account settings"
+            onClick={() => setTab("Settings")}
+          >
             <UserRound size={16} />
             <span>{user.name}</span>
           </button>
@@ -305,7 +323,24 @@ export default function App() {
           </button>
         </div>
       )}
-      {!game || !data ? (
+      {tab === "Settings" ? (
+        <>
+          <AccountSettings
+            onSaved={(next) => {
+              setUser(next);
+              load().catch((e) => setError(e.message));
+            }}
+          />
+          {data && (
+            <ProfileView
+              profile={data?.profile}
+              scans={scans}
+              act={act}
+              logout={() => logout().catch((e) => setError(e.message))}
+            />
+          )}
+        </>
+      ) : !game || !data ? (
         <section className="card">
           <p className="muted mb-4">
             {error
@@ -387,14 +422,6 @@ export default function App() {
                 </div>
               </details>
             </>
-          )}
-          {tab === "Profile" && (
-            <ProfileView
-              profile={data.profile}
-              scans={scans}
-              act={act}
-              logout={() => logout().catch((e) => setError(e.message))}
-            />
           )}
         </>
       )}
@@ -896,7 +923,7 @@ function Progress({
   weights: Weight[];
   scans: Scan[];
   data: Workout | null;
-  act: (fn: () => Promise<unknown>) => void;
+  act: (fn: () => Promise<unknown>) => Promise<boolean>;
 }) {
   const [weight, setWeight] = useState("");
   const [calories, setCalories] = useState("");
@@ -930,8 +957,11 @@ function Progress({
             className="mt-4 flex gap-2"
             onSubmit={(e) => {
               e.preventDefault();
-              act(() => api("weight", "POST", { weightKg: Number(weight) }));
-              setWeight("");
+              act(() =>
+                api("weight", "POST", { weightKg: Number(weight) }),
+              ).then((saved) => {
+                if (saved) setWeight("");
+              });
             }}
           >
             <input
@@ -1038,7 +1068,7 @@ function Shop({
 }: {
   rewards: Reward[];
   coins: number;
-  act: (fn: () => Promise<unknown>) => void;
+  act: (fn: () => Promise<unknown>) => Promise<boolean>;
 }) {
   const [name, setName] = useState(""),
     [cost, setCost] = useState("");
@@ -1072,9 +1102,14 @@ function Shop({
         className="card mt-5 gridform"
         onSubmit={(e) => {
           e.preventDefault();
-          act(() => api("rewards", "POST", { name, cost: Number(cost) }));
-          setName("");
-          setCost("");
+          act(() => api("rewards", "POST", { name, cost: Number(cost) })).then(
+            (saved) => {
+              if (saved) {
+                setName("");
+                setCost("");
+              }
+            },
+          );
         }}
       >
         <input
@@ -1104,7 +1139,7 @@ function ProfileView({
 }: {
   profile: Profile | undefined;
   scans: Scan[];
-  act: (fn: () => Promise<unknown>) => void;
+  act: (fn: () => Promise<unknown>) => Promise<boolean>;
   logout: () => void;
 }) {
   const [file, setFile] = useState<File | null>(null);
@@ -1130,6 +1165,9 @@ function ProfileView({
       fatMassKg: "",
       measuredBmr: "",
     });
+  useEffect(() => {
+    setProposal(null);
+  }, [form]);
   const payload = (applyTargets: boolean) => ({
     heightCm: Number(form.heightCm),
     currentWeightKg: Number(form.currentWeightKg),

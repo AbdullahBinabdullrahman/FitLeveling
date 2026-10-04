@@ -17,6 +17,8 @@ import {
 } from "@/lib/coach-provider";
 import type { GameData } from "@/lib/game";
 import Character from "./Character";
+import CoachProposalCard from "./CoachProposalCard";
+import type { CoachProposal } from "@/lib/coach-actions";
 import TrainingWorkspace from "./TrainingWorkspace";
 
 type Settings = {
@@ -30,7 +32,13 @@ type Settings = {
   suggestedProvider: AIProvider | null;
   keyNeedsReconnect: boolean;
 };
-type Message = { role: "user" | "assistant"; content: string };
+type Message = {
+  id?: string;
+  role: "user" | "assistant";
+  content: string;
+  proposal?: CoachProposal | null;
+  status?: string;
+};
 async function request<T>(
   path: string,
   method = "GET",
@@ -46,13 +54,23 @@ async function request<T>(
     throw new Error(data.error ?? "Your coach could not connect");
   return data;
 }
-export default function CoachView({ game, onPlanApplied }: { game: GameData; onPlanApplied: () => Promise<void> }) {
+export default function CoachView({
+  game,
+  onPlanApplied,
+}: {
+  game: GameData;
+  onPlanApplied: () => Promise<void>;
+}) {
   const [settings, setSettings] = useState<Settings | null>(null);
   const [provider, setProvider] = useState<CoachMode>("builtin");
   const [model, setModel] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [models, setModels] = useState<string[]>([]);
   const [showSettings, setShowSettings] = useState(false);
+  const [showTraining, setShowTraining] = useState(false);
+  const [applying, setApplying] = useState<string | null>(null);
+  const [loadingChat, setLoadingChat] = useState(true);
+  const retry = useRef<{ text: string; id: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
@@ -80,6 +98,55 @@ export default function CoachView({ game, onPlanApplied }: { game: GameData; onP
         `Your saved key belongs to ${AI_PROVIDERS[selected as AIProvider].label}. Load models and save to correct the provider.`,
       );
   };
+  async function loadChat() {
+    const d = await request<{ messages: Message[] }>("");
+    setMessages(d.messages);
+  }
+  useEffect(() => {
+    let active = true;
+    request<{ messages: Message[] }>("")
+      .then((d) => {
+        if (active) setMessages(d.messages);
+      })
+      .catch((e) => {
+        if (active) setError(e.message);
+      })
+      .finally(() => {
+        if (active) setLoadingChat(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+  async function applySuggestion(id: string, action: "apply" | "dismiss") {
+    if (applying || thinking) return;
+    setApplying(id);
+    setError("");
+    try {
+      await request("/actions", "POST", { id, action });
+      setMessages((m) =>
+        m.map((v) =>
+          v.id === id
+            ? { ...v, status: action === "apply" ? "applied" : "dismissed" }
+            : v,
+        ),
+      );
+      if (action === "apply") {
+        setNotice("Change saved. Your plan and progress are updated.");
+        try {
+          await onPlanApplied();
+        } catch {
+          setNotice(
+            "Change saved. Refresh to see your updated plan and progress.",
+          );
+        }
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not save");
+    } finally {
+      setApplying(null);
+    }
+  }
   useEffect(() => {
     request<Settings>("/settings")
       .then(acceptSettings)
@@ -93,23 +160,25 @@ export default function CoachView({ game, onPlanApplied }: { game: GameData; onP
   }, [messages, thinking, game.character.animations]);
   async function send(message: string) {
     const text = message.trim();
-    if (!text || thinking || !settings) return;
+    if (!text || thinking || applying || loadingChat || !settings) return;
     setError("");
     setThinking(true);
     setInput("");
-    const history = messages
-      .slice(-10)
-      .map((m) => ({ ...m, content: m.content.slice(0, 4000) }));
-    setMessages((previous) => [...previous, { role: "user", content: text }]);
+    const clientId =
+      retry.current?.text === text ? retry.current.id : crypto.randomUUID();
+    retry.current = { text, id: clientId };
+    setMessages((previous) =>
+      previous.at(-1)?.role === "user" && previous.at(-1)?.content === text
+        ? previous
+        : [...previous, { role: "user", content: text }],
+    );
     try {
-      const result = await request<{ reply: string }>("", "POST", {
+      const result = await request<Message>("", "POST", {
         message: text,
-        history,
+        clientId,
       });
-      setMessages((previous) => [
-        ...previous,
-        { role: "assistant", content: result.reply },
-      ]);
+      setMessages((previous) => [...previous, result]);
+      retry.current = null;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not connect");
       setInput(text);
@@ -176,9 +245,9 @@ export default function CoachView({ game, onPlanApplied }: { game: GameData; onP
           <div className="label text-violet-300">
             A companion in your corner
           </div>
-          <h2>Your mission coach</h2>
+          <h2>Let’s work on your next step</h2>
           <p className="muted">
-            Ideas, encouragement, and a manageable next step.
+            Talk it through, review a suggestion, and save what works for you.
           </p>
         </div>
         <button
@@ -189,7 +258,7 @@ export default function CoachView({ game, onPlanApplied }: { game: GameData; onP
           <Settings2 size={16} /> AI settings <ChevronDown size={14} />
         </button>
       </div>
-      <TrainingWorkspace onPlanApplied={onPlanApplied} />
+
       {showSettings && (
         <section className="card mb-5 space-y-4">
           <div className="flex items-center gap-2 font-bold">
@@ -198,8 +267,9 @@ export default function CoachView({ game, onPlanApplied }: { game: GameData; onP
           </div>
           <p className="muted text-sm">
             Use the built-in coach, or connect OpenAI or Groq for conversational
-            coaching. Your selected provider receives your chat, profile, recent InBody scans, daily updates,
-            current training plan and game progress. API usage is billed to the connected key.
+            coaching. Your selected provider receives your chat, profile, recent
+            InBody scans, daily updates, current training plan and game
+            progress. API usage is billed to the connected key.
           </p>
           <div className="grid gap-4 md:grid-cols-2">
             <label className="field">
@@ -352,8 +422,13 @@ export default function CoachView({ game, onPlanApplied }: { game: GameData; onP
           {error}
         </div>
       )}
-      <div className="grid gap-5 lg:grid-cols-[.7fr_1.3fr]">
-        <aside className="card coach-companion">
+      {notice && (
+        <p role="status" className="mb-4 text-teal-300">
+          {notice}
+        </p>
+      )}
+      <div className="grid gap-5 lg:grid-cols-[1.5fr_.6fr]">
+        <aside className="card coach-companion order-2">
           <div className="label">{game.character.name}’s command center</div>
           <Character
             character={game.character}
@@ -364,7 +439,8 @@ export default function CoachView({ game, onPlanApplied }: { game: GameData; onP
           <h3 className="text-xl font-bold">You set the pace.</h3>
           <p className="muted mt-2 text-sm">
             Your AI coach can read your saved goal, recent scans, daily updates,
-            training plan and progress. Your rest days count as taking care of yourself.
+            training plan and progress. Your rest days count as taking care of
+            yourself.
           </p>
           <div className="mt-5 space-y-2">
             <div className="context-row">
@@ -393,20 +469,22 @@ export default function CoachView({ game, onPlanApplied }: { game: GameData; onP
               : "Built-in companion"}
           </div>
         </aside>
-        <section className="chat-card">
+        <section className="chat-card order-1 coach-chat-primary">
           <div className="chat-header">
             <span className="flex items-center gap-2 font-bold">
-              <Bot size={19} className="text-violet-300" /> Mission support
+              <Bot size={19} className="text-violet-300" /> Your coach
             </span>
             <button
               className="muted text-xs"
-              disabled={thinking || !messages.length}
+              disabled={thinking || applying !== null || loadingChat}
               onClick={() => {
-                setMessages([]);
+                loadChat().catch((e) => setError(e.message));
+                setInput("");
+                retry.current = null;
                 setError("");
               }}
             >
-              Clear chat
+              Reload conversation
             </button>
           </div>
           <div
@@ -415,25 +493,34 @@ export default function CoachView({ game, onPlanApplied }: { game: GameData; onP
             aria-label="Coach conversation"
             aria-live="polite"
           >
-            {messages.length === 0 && (
+            {!loadingChat && messages.length === 0 && (
               <div className="chat-welcome">
                 <span className="chat-welcome-icon">
                   <Sparkles size={25} />
                 </span>
-                <h3 className="mt-4 text-2xl font-bold">Hey, explorer.</h3>
+                <h3 className="mt-4 text-2xl font-bold">
+                  What’s on your mind?
+                </h3>
                 <p className="muted mt-3 text-sm">
-                  Need a little momentum? Let’s find your next small win.
+                  Tell me what changed, what you want to try, or what’s getting
+                  in your way. We can work on your training, nutrition and daily
+                  routine together.
                 </p>
                 <div className="suggestions">
                   {[
-                    "What’s my next quest?",
-                    "Help me start a workout",
+                    "Can we adjust my exercises?",
+                    "Let’s review my nutrition targets",
                     "I’m tired. Should I rest?",
-                    "How do I fuel the journey?",
+                    "Help me build a daily habit",
                   ].map((prompt) => (
                     <button
                       key={prompt}
-                      disabled={thinking || !settings}
+                      disabled={
+                        thinking ||
+                        applying !== null ||
+                        loadingChat ||
+                        !settings
+                      }
                       onClick={() => send(prompt)}
                     >
                       {prompt} <Send size={12} />
@@ -451,8 +538,21 @@ export default function CoachView({ game, onPlanApplied }: { game: GameData; onP
                   </span>
                 )}
                 <p>{m.content}</p>
+                {m.proposal && m.id && (
+                  <CoachProposalCard
+                    proposal={m.proposal}
+                    status={m.status ?? "pending"}
+                    busy={!!applying || thinking}
+                    onAction={(action) => applySuggestion(m.id!, action)}
+                  />
+                )}
               </div>
             ))}
+            {loadingChat && (
+              <p role="status" className="muted">
+                Loading your conversation…
+              </p>
+            )}
             {thinking && (
               <div className="chat-message assistant">
                 <span
@@ -478,22 +578,40 @@ export default function CoachView({ game, onPlanApplied }: { game: GameData; onP
             <label htmlFor="coach-message" className="sr-only">
               Message your coach
             </label>
-            <input
+            <textarea
+              rows={2}
               id="coach-message"
               value={input}
               maxLength={1500}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask about your next step…"
-              disabled={thinking || !settings}
+              placeholder="Tell me what you’d like to work on…"
+              disabled={
+                thinking || applying !== null || loadingChat || !settings
+              }
             />
             <button
               className="btn"
-              disabled={thinking || !settings || !input.trim()}
+              disabled={
+                thinking ||
+                applying !== null ||
+                loadingChat ||
+                !settings ||
+                !input.trim()
+              }
               aria-label="Send message"
             >
               <Send size={18} />
             </button>
           </form>
+          {!connected && (
+            <button
+              type="button"
+              className="ghost m-3"
+              onClick={() => setShowSettings(true)}
+            >
+              Connect AI for open-ended chat & plan changes
+            </button>
+          )}
           <p className="chat-footnote">
             {connected
               ? "AI suggestions may be imperfect. You decide what fits your day."
@@ -501,6 +619,19 @@ export default function CoachView({ game, onPlanApplied }: { game: GameData; onP
           </p>
         </section>
       </div>
+      <section className="card mt-5">
+        <button
+          className="ghost"
+          aria-expanded={showTraining}
+          onClick={() => setShowTraining(!showTraining)}
+        >
+          {showTraining ? "Hide" : "Open"} daily check-in & manual plan editor
+        </button>
+        <p className="muted text-sm mt-2">
+          Prefer to edit yourself? Keep your daily recovery notes and plan here.
+        </p>
+        {showTraining && <TrainingWorkspace onPlanApplied={onPlanApplied} />}
+      </section>
     </div>
   );
 }

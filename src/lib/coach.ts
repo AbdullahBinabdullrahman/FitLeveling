@@ -71,7 +71,7 @@ export function builtinReply(message: string, game: GameData) {
   if (/\b(rest|tired|recover\w*|sore|sleep)\b/i.test(message))
     return `${character.name} is in recovery mode. A rest day is part of your training: prioritize sleep, eat regular meals, and try gentle movement only if it feels comfortable. You don’t lose XP or coins by resting.`;
   if (/fuel|food|nutrition|protein|calorie/i.test(message))
-    return `You’ve logged nutrition on ${stats.nutritionDays} day${stats.nutritionDays === 1 ? "" : "s"} this week. Try a simple check-in after your usual meal today. The Fuel the journey quest rewards three days of logging, regardless of the numbers. Review your personal nutrition targets in Profile.`;
+    return `You’ve logged nutrition on ${stats.nutritionDays} day${stats.nutritionDays === 1 ? "" : "s"} this week. Try a simple check-in after your usual meal today. The Fuel the journey quest rewards three days of logging, regardless of the numbers. Review your personal nutrition targets in Settings.`;
   if (/quest|boss|mission/i.test(message)) {
     const quest = game.quests.find((q) => !q.claimed && q.current >= q.target);
     return quest
@@ -79,6 +79,6 @@ export function builtinReply(message: string, game: GameData) {
       : `The Iron Colossus has ${Math.max(0, 3 - stats.trainingDays)} shield${3 - stats.trainingDays === 1 ? "" : "s"} remaining. Train on three different days this week to clear it. A nutrition check-in or a weekly weight log is another small step you can take today.`;
   }
   if (/workout|train|next|start/i.test(message))
-    return `You’ve completed ${stats.weeklyWorkouts} workout${stats.weeklyWorkouts === 1 ? "" : "s"} this week. Open Train to continue your saved rotation. To change exercises, save a daily update in Adaptive training, review a proposal or edit the plan, then apply it. Start with a comfortable weight and use your previous logs as a reference. ${stats.todayWorkouts ? "You’ve already trained today; recovery is a good next mission." : "Focus on one set at a time; your progress is saved as you log."}`;
+    return `You’ve completed ${stats.weeklyWorkouts} workout${stats.weeklyWorkouts === 1 ? "" : "s"} this week. Open Train to continue your saved rotation. To change exercises, connect an AI model in coach settings and ask for a change in chat, or open the manual plan editor below. Start with a comfortable weight and use your previous logs as a reference. ${stats.todayWorkouts ? "You’ve already trained today; recovery is a good next mission." : "Focus on one set at a time; your progress is saved as you log."}`;
   return `${character.name} is level ${stats.level}, powered by ${stats.workouts} completed workout${stats.workouts === 1 ? "" : "s"}. Pick one small next step: a planned workout, a fuel check-in, or a rest day. Ask me about your quests, training, nutrition logging, or recovery for a specific suggestion. Every sustainable step counts.`;
 }
