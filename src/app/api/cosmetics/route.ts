@@ -1,3 +1,4 @@
+import { circulateCoins } from "@/lib/economy";
 import { NextRequest, NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
@@ -58,6 +59,7 @@ export async function POST(request: NextRequest) {
         await tx
           .insert(cosmeticInventory)
           .values({ userId, itemId, pricePaid: item.price });
+        await circulateCoins(tx, -item.price);
         await tx.insert(coinTransactions).values({
           userId,
           amount: -item.price,

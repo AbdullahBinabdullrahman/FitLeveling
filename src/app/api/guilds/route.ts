@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { and, eq, ilike, sql, or } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
@@ -11,6 +11,7 @@ import {
 } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { fail } from "@/lib/http";
+import { notifySocial } from "@/lib/push";
 import { membershipChange } from "@/lib/guilds";
 import { nicknameSchema } from "@/lib/community-profile";
 import { tagsSchema } from "@/lib/interests";
@@ -132,6 +133,7 @@ export async function POST(r: NextRequest) {
         }),
       ])
       .parse(await r.json());
+    let notifyUser: string | undefined;
     const result = await db.transaction(async (tx) => {
       if (v.action === "create") {
         await tx.insert(profiles).values({ userId: u }).onConflictDoNothing();
@@ -224,6 +226,7 @@ export async function POST(r: NextRequest) {
             target: [guildMembers.guildId, guildMembers.userId],
             set: { status: "pending" },
           });
+        notifyUser = g.ownerId;
         return;
       }
       const count =
@@ -248,6 +251,8 @@ export async function POST(r: NextRequest) {
         v.action,
         count,
       );
+      if (["approve", "reject", "remove"].includes(v.action))
+        notifyUser = target;
       if (next === "delete")
         await tx.delete(guildMembers).where(eq(guildMembers.id, m!.id));
       else
@@ -256,6 +261,7 @@ export async function POST(r: NextRequest) {
           .set({ status: next })
           .where(eq(guildMembers.id, m!.id));
     });
+    if (notifyUser) after(() => notifySocial(notifyUser!, "guilds"));
     return NextResponse.json({ ok: true, ...result });
   } catch (e) {
     return fail(e);

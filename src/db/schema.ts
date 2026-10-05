@@ -21,6 +21,7 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   name: text("name").notNull(),
   passwordHash: text("password_hash").notNull(),
+  hasPassword: boolean("has_password").notNull().default(true),
   createdAt: created(),
 });
 export const profiles = pgTable("profiles", {
@@ -405,3 +406,29 @@ export const coachMessages = pgTable(
     index("coach_message_history").on(t.userId, t.position),
   ],
 ).enableRLS();
+
+export const authIdentities = pgTable("auth_identities", {
+  authUserId: uuid("auth_user_id").primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  createdAt: created(),
+}).enableRLS();
+export const notificationDevices = pgTable("notification_devices", {
+  installationId: uuid("installation_id").primaryKey(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  token: text("token").notNull().unique(),
+  social: boolean("social").notNull().default(true),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+}).enableRLS();
+
+// One bank circulates the fixed in-game supply; purchases return coins to it.
+export const coinTreasury = pgTable("coin_treasury", {
+  id: integer("id").primaryKey(),
+  supply: integer("supply").notNull(),
+  balance: integer("balance").notNull(),
+}).enableRLS();

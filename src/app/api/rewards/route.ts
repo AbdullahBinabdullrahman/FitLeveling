@@ -1,10 +1,92 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { and, eq, isNull, or } from 'drizzle-orm';
-import { z } from 'zod';
-import { db } from '@/db';
-import { rewards, redemptions, coinTransactions, profiles } from '@/db/schema';
-import { requireUser } from '@/lib/auth';
-import { fail } from '@/lib/http';
-export async function GET() { try { const id = await requireUser(); return NextResponse.json({ rewards: await db.select().from(rewards).where(and(eq(rewards.active, true), or(isNull(rewards.userId), eq(rewards.userId, id)))) }); } catch (e) { return fail(e); } }
-export async function POST(request: NextRequest) { try { const id = await requireUser(); const { name, cost } = z.object({ name: z.string().min(2).max(100), cost: z.number().int().min(1).max(100000) }).parse(await request.json()); const [reward] = await db.insert(rewards).values({ userId: id, name, cost }).returning(); return NextResponse.json({ reward }); } catch (e) { return fail(e); } }
-export async function PUT(request: NextRequest) { try { const id = await requireUser(); const { rewardId } = z.object({ rewardId: z.uuid() }).parse(await request.json()); const result = await db.transaction(async tx => { const [reward] = await tx.select().from(rewards).where(and(eq(rewards.id, rewardId), eq(rewards.active, true), or(isNull(rewards.userId), eq(rewards.userId, id)))); if (!reward) throw new Error('NOT_FOUND'); const [profile] = await tx.select().from(profiles).where(eq(profiles.userId, id)).for('update'); if (profile.coins < reward.cost) throw new Error('Not enough coins'); const [redemption] = await tx.insert(redemptions).values({ userId: id, rewardId, costSnapshot: reward.cost }).returning(); await tx.insert(coinTransactions).values({ userId: id, amount: -reward.cost, reason: 'redemption', eventKey: `redemption:${redemption.id}` }); await tx.update(profiles).set({ coins: profile.coins - reward.cost }).where(eq(profiles.userId, id)); return { redemption, balance: profile.coins - reward.cost }; }); return NextResponse.json(result); } catch (e) { return fail(e); } }
+import { circulateCoins } from "@/lib/economy";
+import { NextRequest, NextResponse } from "next/server";
+import { and, eq, isNull, or } from "drizzle-orm";
+import { z } from "zod";
+import { db } from "@/db";
+import { rewards, redemptions, coinTransactions, profiles } from "@/db/schema";
+import { requireUser } from "@/lib/auth";
+import { fail } from "@/lib/http";
+export async function GET() {
+  try {
+    const id = await requireUser();
+    return NextResponse.json({
+      rewards: await db
+        .select()
+        .from(rewards)
+        .where(
+          and(
+            eq(rewards.active, true),
+            or(isNull(rewards.userId), eq(rewards.userId, id)),
+          ),
+        ),
+    });
+  } catch (e) {
+    return fail(e);
+  }
+}
+export async function POST(request: NextRequest) {
+  try {
+    const id = await requireUser();
+    const { name, cost } = z
+      .object({
+        name: z.string().min(2).max(100),
+        cost: z.number().int().min(1).max(100000),
+      })
+      .parse(await request.json());
+    const [reward] = await db
+      .insert(rewards)
+      .values({ userId: id, name, cost })
+      .returning();
+    return NextResponse.json({ reward });
+  } catch (e) {
+    return fail(e);
+  }
+}
+export async function PUT(request: NextRequest) {
+  try {
+    const id = await requireUser();
+    const { rewardId } = z
+      .object({ rewardId: z.uuid() })
+      .parse(await request.json());
+    const result = await db.transaction(async (tx) => {
+      const [reward] = await tx
+        .select()
+        .from(rewards)
+        .where(
+          and(
+            eq(rewards.id, rewardId),
+            eq(rewards.active, true),
+            or(isNull(rewards.userId), eq(rewards.userId, id)),
+          ),
+        );
+      if (!reward) throw new Error("NOT_FOUND");
+      const [profile] = await tx
+        .select()
+        .from(profiles)
+        .where(eq(profiles.userId, id))
+        .for("update");
+      if (profile.coins < reward.cost) throw new Error("Not enough coins");
+      const [redemption] = await tx
+        .insert(redemptions)
+        .values({ userId: id, rewardId, costSnapshot: reward.cost })
+        .returning();
+      await circulateCoins(tx, -reward.cost);
+      await tx
+        .insert(coinTransactions)
+        .values({
+          userId: id,
+          amount: -reward.cost,
+          reason: "redemption",
+          eventKey: `redemption:${redemption.id}`,
+        });
+      await tx
+        .update(profiles)
+        .set({ coins: profile.coins - reward.cost })
+        .where(eq(profiles.userId, id));
+      return { redemption, balance: profile.coins - reward.cost };
+    });
+    return NextResponse.json(result);
+  } catch (e) {
+    return fail(e);
+  }
+}

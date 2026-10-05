@@ -1,10 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { and, eq, gt, lt, desc, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { friendships, directMessages } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { fail } from "@/lib/http";
+import { notifySocial } from "@/lib/push";
 import { canMessage } from "@/lib/friends";
 const chat = z.object({ friendshipId: z.uuid() });
 export async function GET(request: NextRequest) {
@@ -57,6 +58,7 @@ export async function POST(request: NextRequest) {
     const v = chat
       .extend({ body: z.string().trim().min(1).max(2000), clientId: z.uuid() })
       .parse(await request.json());
+    let notifyUser: string | undefined;
     const message = await db.transaction(async (tx) => {
       const [f] = await tx
         .select()
@@ -93,8 +95,10 @@ export async function POST(request: NextRequest) {
         .insert(directMessages)
         .values({ ...v, senderId: userId })
         .returning();
+      notifyUser = f.lowUserId === userId ? f.highUserId : f.lowUserId;
       return saved;
     });
+    if (notifyUser) after(() => notifySocial(notifyUser!, "chat"));
     return NextResponse.json({ message });
   } catch (e) {
     return fail(e);

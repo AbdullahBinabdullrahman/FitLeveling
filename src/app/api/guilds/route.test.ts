@@ -1,3 +1,4 @@
+vi.mock('next/server', async importOriginal => ({...await importOriginal<typeof import('next/server')>(), after: vi.fn()}));
 import { beforeEach, describe, it, expect, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { PgDialect } from "drizzle-orm/pg-core";

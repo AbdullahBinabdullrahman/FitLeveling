@@ -14,6 +14,7 @@ export async function GET() {
         id: users.id,
         name: users.name,
         email: users.email,
+        hasPassword:users.hasPassword,
         timezone: profiles.timezone,
       })
       .from(users)
@@ -36,6 +37,7 @@ export async function PATCH(r: NextRequest) {
         .where(eq(users.id, u))
         .for("update");
       if (!old) throw Error("NOT_FOUND");
+      if(!old.hasPassword&&(v.email!==old.email||v.newPassword))throw Error("This account uses social sign-in. Manage your login with your Google or Apple account.");
       if (v.email !== old.email || v.newPassword) {
         if (
           !v.currentPassword ||

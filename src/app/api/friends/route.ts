@@ -1,10 +1,11 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse, after } from "next/server";
 import { and, eq, ne, or, sql, ilike } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { friendships, communityProfiles, users } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { fail } from "@/lib/http";
+import { notifySocial } from "@/lib/push";
 import { friendPair, transition } from "@/lib/friends";
 export async function GET(request: NextRequest) {
   try {
@@ -114,6 +115,7 @@ export async function POST(request: NextRequest) {
         }),
       ])
       .parse(await request.json());
+    let notifyUser: string | undefined;
     await db.transaction(async (tx) => {
       if (v.action === "request") {
         const [lowUserId, highUserId] = friendPair(userId, v.toUserId);
@@ -158,6 +160,7 @@ export async function POST(request: NextRequest) {
               updatedAt: new Date(),
             },
           });
+        notifyUser = v.toUserId;
         return;
       }
       const [f] = await tx
@@ -171,6 +174,7 @@ export async function POST(request: NextRequest) {
         .set({ ...transition(f, userId, v.action), updatedAt: new Date() })
         .where(eq(friendships.id, f.id));
     });
+    if (notifyUser) after(() => notifySocial(notifyUser!, "friends"));
     return NextResponse.json({ ok: true });
   } catch (e) {
     return fail(e);

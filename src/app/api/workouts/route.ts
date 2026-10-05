@@ -1,5 +1,6 @@
+import { circulateCoins, workoutRewardEligible } from "@/lib/economy";
 import { NextRequest, NextResponse } from "next/server";
-import { and, desc, eq, inArray, isNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, gt, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import {
@@ -259,50 +260,65 @@ export async function PUT(request: NextRequest) {
         .from(templateExercises)
         .where(eq(templateExercises.templateId, session.templateId));
       const complete = logged.length >= plan.reduce((n, p) => n + p.sets, 0);
-      const xp = 100 + (complete ? 25 : 0) + Math.min(prs, 3) * 30;
-      const coins = 20 + prs * 10;
+      let xp = 100 + (complete ? 25 : 0) + Math.min(prs, 3) * 30;
+      let coins = 20 + Math.min(prs, 3) * 10;
       const [profile] = await tx
         .select()
         .from(profiles)
         .where(eq(profiles.userId, id))
         .for("update");
+      const [rewardedToday] = await tx
+        .select({ id: xpTransactions.id })
+        .from(xpTransactions)
+        .where(
+          and(
+            eq(xpTransactions.userId, id),
+            eq(xpTransactions.reason, "workout"),
+            gt(xpTransactions.amount, 0),
+            sql`(${xpTransactions.createdAt} at time zone ${profile.timezone})::date = (now() at time zone ${profile.timezone})::date`,
+          ),
+        )
+        .limit(1);
+      const rewardEligible = workoutRewardEligible(!!rewardedToday);
+      if (!rewardEligible) {
+        xp = 0;
+        coins = 0;
+      }
       const prevLevel = profile.level;
       const nextXp = profile.lifetimeXp + xp;
       const nextLevel = levelFromXp(nextXp).level;
       const levelCoins = (nextLevel - prevLevel) * 50;
+      const awardedCoins = await circulateCoins(tx, coins + levelCoins);
       await tx
         .update(sessions)
         .set({ status: "completed", completedAt: new Date() })
         .where(eq(sessions.id, sessionId));
-      await tx
-        .insert(xpTransactions)
-        .values({
-          userId: id,
-          amount: xp,
-          reason: "workout",
-          eventKey: `workout:${sessionId}`,
-        });
-      await tx
-        .insert(coinTransactions)
-        .values({
-          userId: id,
-          amount: coins + levelCoins,
-          reason: "workout and level",
-          eventKey: `workout:${sessionId}`,
-        });
+      await tx.insert(xpTransactions).values({
+        userId: id,
+        amount: xp,
+        reason: "workout",
+        eventKey: `workout:${sessionId}`,
+      });
+      await tx.insert(coinTransactions).values({
+        userId: id,
+        amount: awardedCoins,
+        reason: "workout and level",
+        eventKey: `workout:${sessionId}`,
+      });
       await tx
         .update(profiles)
         .set({
           lifetimeXp: nextXp,
           level: nextLevel,
-          coins: profile.coins + coins + levelCoins,
+          coins: profile.coins + awardedCoins,
         })
         .where(eq(profiles.userId, id));
       return {
         xp,
-        coins: coins + levelCoins,
+        coins: awardedCoins,
         prs,
         levelUp: nextLevel > prevLevel,
+        rewardEligible,
       };
     });
     return NextResponse.json(result);

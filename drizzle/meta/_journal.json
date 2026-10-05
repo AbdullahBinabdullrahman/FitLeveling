@@ -64,6 +64,20 @@
       "when": 1791109745045,
       "tag": "0008_smooth_santa_claus",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791203121222,
+      "tag": "0009_right_paladin",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791204673333,
+      "tag": "0010_silly_vertigo",
+      "breakpoints": true
     }
   ]
 }

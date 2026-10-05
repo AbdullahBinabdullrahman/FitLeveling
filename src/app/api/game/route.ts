@@ -1,3 +1,4 @@
+import { circulateCoins } from "@/lib/economy";
 import { NextRequest, NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
@@ -112,7 +113,10 @@ export async function POST(request: NextRequest) {
         throw new Error("Complete the quest before claiming your reward");
       const lifetimeXp = profile.lifetimeXp + quest.xp;
       const level = levelFromXp(lifetimeXp).level;
-      const coins = quest.coins + (level - profile.level) * 50;
+      const coins = await circulateCoins(
+        tx,
+        quest.coins + (level - profile.level) * 50,
+      );
       await tx.insert(xpTransactions).values({
         userId,
         amount: quest.xp,

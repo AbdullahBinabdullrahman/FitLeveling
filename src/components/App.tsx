@@ -27,6 +27,7 @@ import {
 import CharacterArt from "./game/Character";
 import Dashboard from "./game/Dashboard";
 import CoachView from "./game/CoachView";
+import SocialSignIn from "./game/SocialSignIn";
 import AccountSettings from "./game/AccountSettings";
 import HabitsView from "./game/HabitsView";
 import CommunityView from "./game/CommunityView";
@@ -492,6 +493,7 @@ function Auth({ onDone }: { onDone: (u: User) => void }) {
         <h1 className="text-4xl font-black">
           LEVEL<span className="text-teal-300">UP</span>
         </h1>
+        <SocialSignIn />
         {register && (
           <label className="field">
             Name

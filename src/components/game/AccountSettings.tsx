@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-type Account = { id: string; name: string; email: string; timezone: string };
+type Account = { hasPassword?: boolean; id: string; name: string; email: string; timezone: string };
 export default function AccountSettings({
   onSaved,
 }: {
@@ -121,7 +121,7 @@ export default function AccountSettings({
                 ))}
               </datalist>
             </label>
-            <label className="field">
+            {form.hasPassword!==false&&<label className="field">
               Current password
               <input
                 type="password"
@@ -131,8 +131,8 @@ export default function AccountSettings({
                 onChange={(e) => setPassword(e.target.value)}
               />
               <small>Required when changing email or password.</small>
-            </label>
-            <label className="field">
+            </label>}
+            {form.hasPassword!==false&&<label className="field">
               New password (optional)
               <input
                 type="password"
@@ -142,7 +142,7 @@ export default function AccountSettings({
                 value={nextPassword}
                 onChange={(e) => setNextPassword(e.target.value)}
               />
-            </label>
+            </label>}
             <button className="btn self-end">
               {busy ? "Saving…" : "Save account"}
             </button>
