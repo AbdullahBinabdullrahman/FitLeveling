@@ -45,8 +45,13 @@ export default function Coach() {
       list.current?.scrollToEnd({ animated: true });
     });
   }
-  const latest=q.data?.messages.at(-1)?.id;
-  useEffect(()=>{if(latest)requestAnimationFrame(()=>list.current?.scrollToEnd({animated:true}))},[latest]);
+  const latest = q.data?.messages.at(-1)?.id;
+  useEffect(() => {
+    if (latest)
+      requestAnimationFrame(() =>
+        list.current?.scrollToEnd({ animated: true }),
+      );
+  }, [latest]);
   return (
     <KeyboardAvoidingView
       style={{ flex: 1, backgroundColor: colors.bg }}

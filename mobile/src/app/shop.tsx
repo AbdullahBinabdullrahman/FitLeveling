@@ -16,6 +16,7 @@ import {
 export default function Shop() {
   const q = useApi<{ catalog: Item[]; owned: string[] }>("cosmetics"),
     g = useApi<Game>("game"),
+    economy = useApi<{ supply: number; availableRewards: number }>("economy"),
     refresh = useRefresh(),
     task = useTask(),
     [filter, setFilter] = useState("all");
@@ -27,6 +28,13 @@ export default function Shop() {
       refreshing={q.isRefetching}
     >
       <Status loading={q.isPending} error={q.error ?? task.error} />
+      {economy.data && (
+        <Body muted>
+          {economy.data.supply.toLocaleString()} total game coins ·{" "}
+          {economy.data.availableRewards.toLocaleString()} available for
+          rewards. Equipment purchases replenish the reward bank.
+        </Body>
+      )}
       {g.data && <Hero character={g.data.character} />}
       <Row>
         {[

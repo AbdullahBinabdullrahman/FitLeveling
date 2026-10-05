@@ -41,8 +41,13 @@ export default function Chat() {
         lastMessageId: latest,
       }).catch(() => {});
   }, [id, latest]);
-  const list=useRef<FlatList<Message>>(null);
-  useEffect(()=>{if(latest)requestAnimationFrame(()=>list.current?.scrollToEnd({animated:true}))},[latest]);
+  const list = useRef<FlatList<Message>>(null);
+  useEffect(() => {
+    if (latest)
+      requestAnimationFrame(() =>
+        list.current?.scrollToEnd({ animated: true }),
+      );
+  }, [latest]);
   const rows = [...older, ...(q.data?.messages ?? [])].filter(
     (m, i, a) => a.findIndex((x) => x.id === m.id) === i,
   );
