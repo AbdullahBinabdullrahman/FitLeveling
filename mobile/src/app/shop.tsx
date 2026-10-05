@@ -1,3 +1,4 @@
+import { View, useWindowDimensions } from "react-native";
 import { useState } from "react";
 import { useApi, useRefresh } from "../lib/query";
 import { api } from "../lib/api";
@@ -14,6 +15,7 @@ import {
   useTask,
 } from "../components/ui";
 export default function Shop() {
+  const { width } = useWindowDimensions();
   const q = useApi<{ catalog: Item[]; owned: string[] }>("cosmetics"),
     g = useApi<Game>("game"),
     economy = useApi<{ supply: number; availableRewards: number }>("economy"),
@@ -35,7 +37,13 @@ export default function Shop() {
           rewards. Equipment purchases replenish the reward bank.
         </Body>
       )}
-      {g.data && <Hero character={g.data.character} />}
+      {g.data && (
+        <Hero
+          character={g.data.character}
+          level={g.data.stats.level}
+          size={250}
+        />
+      )}
       <Row>
         {[
           ["all", "All"],
@@ -54,55 +62,59 @@ export default function Shop() {
           />
         ))}
       </Row>
-      {q.data?.catalog
-        .filter(
-          (i) =>
-            filter === "all" ||
-            i.slot === filter ||
-            (filter === "owned" && q.data!.owned.includes(i.id)),
-        )
-        .map((i) => {
-          const owned = q.data!.owned.includes(i.id),
-            equipped = g.data?.character[i.slot as "skin"] === i.id;
-          return (
-            <Card key={i.id}>
-              {g.data && (
-                <Hero
-                  character={{ ...g.data.character, [i.slot]: i.id }}
-                  size={120}
-                />
-              )}
-              <Heading>{i.name}</Heading>
-              <Body muted>{i.description}</Body>
-              <Body>
-                {i.rarity} · {i.price} coins
-              </Body>
-              <Button
-                title={
-                  equipped
-                    ? "Equipped"
-                    : owned
-                      ? "Equip"
-                      : `Unlock · ${i.price} coins`
-                }
-                disabled={
-                  task.busy ||
-                  equipped ||
-                  (!owned && (g.data?.stats.coins ?? 0) < i.price)
-                }
-                onPress={() =>
-                  task.run(async () => {
-                    await api("cosmetics", "POST", {
-                      action: owned ? "equip" : "buy",
-                      itemId: i.id,
-                    });
-                    await refresh();
-                  })
-                }
-              />
-            </Card>
-          );
-        })}
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 18 }}>
+        {q.data?.catalog
+          .filter(
+            (i) =>
+              filter === "all" ||
+              i.slot === filter ||
+              (filter === "owned" && q.data!.owned.includes(i.id)),
+          )
+          .map((i) => {
+            const owned = q.data!.owned.includes(i.id),
+              equipped = g.data?.character[i.slot as "skin"] === i.id;
+            return (
+              <View key={i.id} style={{ width: width >= 900 ? "31%" : "100%" }}>
+                <Card>
+                  {g.data && (
+                    <Hero
+                      character={{ ...g.data.character, [i.slot]: i.id }}
+                      size={120}
+                    />
+                  )}
+                  <Heading>{i.name}</Heading>
+                  <Body muted>{i.description}</Body>
+                  <Body>
+                    {i.rarity} · {i.price} coins
+                  </Body>
+                  <Button
+                    title={
+                      equipped
+                        ? "Equipped"
+                        : owned
+                          ? "Equip"
+                          : `Unlock · ${i.price} coins`
+                    }
+                    disabled={
+                      task.busy ||
+                      equipped ||
+                      (!owned && (g.data?.stats.coins ?? 0) < i.price)
+                    }
+                    onPress={() =>
+                      task.run(async () => {
+                        await api("cosmetics", "POST", {
+                          action: owned ? "equip" : "buy",
+                          itemId: i.id,
+                        });
+                        await refresh();
+                      })
+                    }
+                  />
+                </Card>
+              </View>
+            );
+          })}
+      </View>
       <Card>
         <Heading>Classic equipment</Heading>
         {Object.entries({

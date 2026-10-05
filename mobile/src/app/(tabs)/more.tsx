@@ -5,6 +5,7 @@ export default function More() {
     <Screen title="Your adventure" subtitle="Make it your own.">
       {[
         ["Your hero", "Skins, accessories and effects", "/hero"],
+        ["Quest log", "Daily wins, weekly raids and milestones", "/quests"],
         ["Equipment shop", "Spend your earned coins", "/shop"],
         ["Habits & hobbies", "Small steps and shared interests", "/habits"],
         [

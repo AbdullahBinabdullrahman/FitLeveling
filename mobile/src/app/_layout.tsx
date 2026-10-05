@@ -81,6 +81,7 @@ function Navigation() {
     >
       <Stack.Protected guard={!!user}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="quests" options={{ title: "Quest log" }} />
         <Stack.Screen name="shop" options={{ title: "Equipment" }} />
         <Stack.Screen name="hero" options={{ title: "Your hero" }} />
         <Stack.Screen name="habits" options={{ title: "Habits" }} />
@@ -106,7 +107,7 @@ export default function RootLayout() {
         style={{
           flex: 1,
           width: "100%",
-          maxWidth: DEMO && Platform.OS === "web" ? 480 : undefined,
+          maxWidth: DEMO && Platform.OS === "web" ? 1280 : undefined,
           alignSelf: "center",
           borderColor: colors.line,
           borderLeftWidth: DEMO ? 1 : 0,

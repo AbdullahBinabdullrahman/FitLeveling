@@ -12,6 +12,7 @@ import {
   Field,
   Button,
   Status,
+  Row,
   useTask,
 } from "../components/ui";
 export default function HeroScreen() {
@@ -28,7 +29,11 @@ export default function HeroScreen() {
       <Status loading={q.isPending} error={q.error ?? task.error} />
       {q.data && (
         <Card>
-          <Hero character={q.data.character} size={260} />
+          <Hero
+            character={q.data.character}
+            size={280}
+            level={q.data.stats.level}
+          />
           <Heading>
             {q.data.character.name} · Level {q.data.stats.level}
           </Heading>
@@ -78,6 +83,68 @@ export default function HeroScreen() {
               })
             }
           />
+          <Heading>Your class</Heading>
+          <Row>
+            {["vanguard", "ranger", "mystic"].map((archetype) => (
+              <Button
+                key={archetype}
+                title={archetype}
+                secondary={q.data!.character.archetype !== archetype}
+                disabled={task.busy}
+                onPress={() =>
+                  task.run(async () => {
+                    await api("game", "PATCH", {
+                      ...q.data!.character,
+                      archetype,
+                    });
+                    await refresh();
+                  })
+                }
+              />
+            ))}
+          </Row>
+          <Heading>Your signature color</Heading>
+          <Row>
+            {["mint", "violet", "amber", "rose"].map((color) => (
+              <Button
+                key={color}
+                title={color}
+                secondary={q.data!.character.color !== color}
+                disabled={task.busy}
+                onPress={() =>
+                  task.run(async () => {
+                    await api("game", "PATCH", { ...q.data!.character, color });
+                    await refresh();
+                  })
+                }
+              />
+            ))}
+          </Row>
+          <Heading>Level-unlocked accessories</Heading>
+          <Row>
+            {[
+              ["none", 0],
+              ["cape", 3],
+              ["halo", 5],
+              ["crown", 10],
+            ].map(([accessory, level]) => (
+              <Button
+                key={accessory}
+                title={`${accessory}${q.data!.stats.level < Number(level) ? " · LV " + level : ""}`}
+                secondary={q.data!.character.accessory !== accessory}
+                disabled={task.busy || q.data!.stats.level < Number(level)}
+                onPress={() =>
+                  task.run(async () => {
+                    await api("game", "PATCH", {
+                      ...q.data!.character,
+                      accessory,
+                    });
+                    await refresh();
+                  })
+                }
+              />
+            ))}
+          </Row>
           <Button
             title="Explore equipment"
             onPress={() => router.push("/shop")}

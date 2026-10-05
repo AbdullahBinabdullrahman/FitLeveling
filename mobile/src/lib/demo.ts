@@ -1,3 +1,4 @@
+import { COSMETICS } from "./cosmetics";
 import type {
   Game,
   Workout,
@@ -17,80 +18,8 @@ const today = new Date().toLocaleDateString("en-CA"),
   self = demoUser.id,
   sara = "22222222-2222-4222-8222-222222222222",
   khalid = "33333333-3333-4333-8333-333333333333";
-const catalog: Item[] = [
-  {
-    id: "midnight",
-    name: "Midnight Sentinel",
-    description: "Violet armor for your next chapter.",
-    slot: "skin",
-    price: 120,
-    rarity: "Rare",
-  },
-  {
-    id: "glacier",
-    name: "Glacier Runner",
-    description: "Ice-blue armor and crystalline details.",
-    slot: "skin",
-    price: 180,
-    rarity: "Rare",
-  },
-  {
-    id: "sunforge",
-    name: "Sunforge",
-    description: "Golden armor powered by a solar core.",
-    slot: "skin",
-    price: 240,
-    rarity: "Epic",
-  },
-  {
-    id: "prism",
-    name: "Prism Sovereign",
-    description: "Iridescent armor for a journey all your own.",
-    slot: "skin",
-    price: 600,
-    rarity: "Legendary",
-  },
-  {
-    id: "ion-blade",
-    name: "Ion Blade",
-    description: "An energized blade that glows as your hero floats.",
-    slot: "weapon",
-    price: 220,
-    rarity: "Epic",
-  },
-  {
-    id: "solar-hammer",
-    name: "Solar Hammer",
-    description: "A radiant hammer forged in gold.",
-    slot: "weapon",
-    price: 300,
-    rarity: "Epic",
-  },
-  {
-    id: "starvisor",
-    name: "Star Visor",
-    description: "A luminous gold visor.",
-    slot: "trinket",
-    price: 90,
-    rarity: "Rare",
-  },
-  {
-    id: "starlight",
-    name: "Starlight Orbit",
-    description: "A halo of energy surrounds your hero.",
-    slot: "aura",
-    price: 150,
-    rarity: "Rare",
-  },
-  {
-    id: "ember-trail",
-    name: "Ember Trail",
-    description: "Animated sparks follow every little victory.",
-    slot: "vfx",
-    price: 200,
-    rarity: "Epic",
-  },
-];
+const catalog: Item[] = COSMETICS;
+
 const profile: Profile = {
   heightCm: "178",
   currentWeightKg: "78.4",
@@ -114,10 +43,10 @@ function seed() {
         accessory: "cape",
         animations: true,
         skin: "glacier",
-        weapon: "ion-blade",
+        weapon: "ionblade",
         aura: "starlight",
         trinket: "starvisor",
-        vfx: "ember-trail",
+        vfx: "embertrail",
       },
       stats: {
         level: 12,
@@ -125,12 +54,61 @@ function seed() {
         weeklyWorkouts: 3,
         todayWorkouts: 0,
         nutritionDays: 4,
-        lifetimeXp: 4200,
+        lifetimeXp:
+          Array.from({ length: 11 }, (_, i) =>
+            Math.round(100 * (i + 1) ** 1.35),
+          ).reduce((sum, n) => sum + n, 0) + 1000,
       },
       today,
       timezone: "Asia/Riyadh",
-      days: [],
+      days: Array.from({ length: 7 }, (_, i) => {
+        const d = new Date();
+        d.setDate(d.getDate() - 6 + i);
+        return {
+          day: d.toLocaleDateString("en-CA"),
+          trained: [0, 2, 4].includes(i),
+          fueled: [0, 1, 2, 4].includes(i),
+        };
+      }),
       quests: [
+        {
+          id: "weekly-fuel",
+          title: "Fuel your adventure",
+          description: "Log nutrition on three days this week.",
+          kind: "weekly",
+          current: 3,
+          target: 3,
+          xp: 80,
+          coins: 20,
+          claimed: false,
+          eventKey: "demo-fuel",
+        },
+        {
+          id: "workouts-10",
+          title: "The first ten missions",
+          description: "Complete ten workouts across your journey.",
+          kind: "achievement",
+          current: 8,
+          target: 10,
+          xp: 150,
+          coins: 30,
+          claimed: false,
+          eventKey: "demo-ten",
+        },
+
+        {
+          id: "weekly-boss",
+          title: "The Consistency Guardian",
+          description:
+            "Train on three different days to break the guardian’s shields.",
+          kind: "weekly",
+          current: 3,
+          target: 3,
+          xp: 250,
+          coins: 75,
+          claimed: false,
+          eventKey: "demo-boss",
+        },
         {
           id: "demo-training",
           title: "Show up for yourself",
@@ -191,7 +169,7 @@ function seed() {
         },
       ],
     } as Workout,
-    owned: ["glacier", "ion-blade", "starlight", "starvisor", "ember-trail"],
+    owned: ["glacier", "ionblade", "starlight", "starvisor", "embertrail"],
     friends: [
       {
         id: "friend-sara",
