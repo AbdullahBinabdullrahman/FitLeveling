@@ -1,3 +1,4 @@
+import { DEMO, demoUser, resetDemo } from "./demo";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   createContext,
@@ -39,8 +40,8 @@ const Context = createContext<{
 export const useAuth = () => useContext(Context);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const cache = useQueryClient();
-  const [user, setUser] = useState<User | null>(null),
-    [loading, setLoading] = useState(true),
+  const [user, setUser] = useState<User | null>(DEMO ? demoUser : null),
+    [loading, setLoading] = useState(!DEMO),
     [socialPending, setPending] = useState(false);
   async function accept(s: Session) {
     await storage.setItem("fit-session", JSON.stringify(s));
@@ -49,6 +50,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setPending(false);
   }
   useEffect(() => {
+    if (DEMO) return;
     let active = true;
     storage
       .getItem("fit-session")
@@ -162,6 +164,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         finishSocial: async (mode, email, password, code) =>
           exchange(mode, email, password, code),
         logout: async () => {
+          if (DEMO) {
+            resetDemo();
+            cache.clear();
+            setUser({ ...demoUser });
+            return;
+          }
           try {
             await unregisterPush();
           } catch {}

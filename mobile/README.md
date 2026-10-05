@@ -43,3 +43,7 @@ Workout logs remain explicitly self-reported. HealthKit/Health Connect, wearable
 Run `npm run typecheck`, `npm run lint`, and `npm run export`. Exports validate JavaScript bundles for iOS, Android, and web; they do not validate native compilation or on-device behavior. OAuth and push remain configuration-dependent and require device testing. Push sending is best-effort; this implementation does not poll Expo receipts or use a durable delivery outbox.
 
 Dependency audit currently reports upstream Expo toolchain advisories involving braces, node-forge, decode-uri-component, and uuid. Do not force incompatible Expo/native package upgrades. Recheck SDK-compatible fixes before a production store release.
+
+## Interactive demo
+
+Run `npm run demo` for a browser preview with sample data and no sign-in. `npm run demo:export` creates `dist-demo/` for local static preview; serve it with SPA fallback for direct routes. The banner identifies the demo and offers Reset demo. Demo state stays in memory and resets on refresh. Purchases, equipping, workout sets, coach suggestions, requests, chat replies, guild approvals and habits affect only this sample state. The demo API never calls the backend. External OAuth/provider connections and device notifications are not simulated. Keep `EXPO_PUBLIC_DEMO` unset for normal app builds.

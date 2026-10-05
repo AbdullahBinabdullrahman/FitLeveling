@@ -1,3 +1,4 @@
+import { DEMO } from "../lib/demo";
 import { useEffect } from "react";
 import { Stack, router } from "expo-router";
 import {
@@ -6,12 +7,34 @@ import {
   focusManager,
 } from "@tanstack/react-query";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { AppState, Platform, View, ActivityIndicator } from "react-native";
+import {
+  AppState,
+  Platform,
+  View,
+  ActivityIndicator,
+  Text,
+  Pressable,
+} from "react-native";
 import { StatusBar } from "expo-status-bar";
 import * as Notifications from "expo-notifications";
 import { AuthProvider, useAuth } from "../lib/auth";
 import { colors } from "../components/ui";
 const queryClient = new QueryClient();
+function DemoBanner() {
+  const { logout } = useAuth();
+  return (
+    <View style={{ padding: 10, backgroundColor: "#183A40", gap: 5 }}>
+      <Text style={{ color: colors.mint, textAlign: "center", fontSize: 12 }}>
+        DEMO · بيانات تجريبية · لا يتم إرسال أي بيانات للخادم
+      </Text>
+      <Pressable accessibilityRole="button" onPress={() => logout()}>
+        <Text style={{ color: colors.text, textAlign: "center", fontSize: 12 }}>
+          Reset demo ↻
+        </Text>
+      </Pressable>
+    </View>
+  );
+}
 function Navigation() {
   const { user, loading } = useAuth();
   useEffect(() => {
@@ -78,13 +101,28 @@ function Navigation() {
 }
 export default function RootLayout() {
   return (
-    <SafeAreaProvider>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <StatusBar style="light" />
-          <Navigation />
-        </AuthProvider>
-      </QueryClientProvider>
-    </SafeAreaProvider>
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <View
+        style={{
+          flex: 1,
+          width: "100%",
+          maxWidth: DEMO && Platform.OS === "web" ? 480 : undefined,
+          alignSelf: "center",
+          borderColor: colors.line,
+          borderLeftWidth: DEMO ? 1 : 0,
+          borderRightWidth: DEMO ? 1 : 0,
+        }}
+      >
+        <SafeAreaProvider>
+          <QueryClientProvider client={queryClient}>
+            <AuthProvider>
+              <StatusBar style="light" />
+              {DEMO && <DemoBanner />}
+              <Navigation />
+            </AuthProvider>
+          </QueryClientProvider>
+        </SafeAreaProvider>
+      </View>
+    </View>
   );
 }
