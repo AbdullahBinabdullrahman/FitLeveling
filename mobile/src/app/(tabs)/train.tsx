@@ -1,3 +1,4 @@
+import { router } from "expo-router";
 import { useState } from "react";
 import { useApi, useRefresh } from "../../lib/query";
 import { api } from "../../lib/api";
@@ -86,6 +87,11 @@ export default function Train() {
     >
       <Status loading={q.isPending} error={q.error ?? task.error} />
       {task.notice && <Body>{task.notice}</Body>}
+      <Button
+        title="Daily check-in & plan editor"
+        secondary
+        onPress={() => router.push("/training-studio")}
+      />
       {!active && (
         <>
           {days.map(([key, name]) => (
@@ -96,6 +102,16 @@ export default function Train() {
               onPress={() => setSelected(key)}
             />
           ))}
+          {d?.plan
+            .filter((e) => e.templateId === selected)
+            .map((e) => (
+              <Card key={e.exerciseId}>
+                <Heading>{e.exerciseName}</Heading>
+                <Body muted>
+                  {e.sets} sets × {e.repMin}–{e.repMax} reps
+                </Body>
+              </Card>
+            ))}
           <Button
             title={task.busy ? "Starting…" : "Start workout"}
             disabled={!selected || task.busy}
@@ -145,6 +161,18 @@ export default function Train() {
                 <Body muted>
                   {e.sets} sets × {e.repMin}–{e.repMax} reps
                 </Body>
+                {d.past?.find((s) => s.exerciseId === e.exerciseId) && (
+                  <Body muted>
+                    Last session:{" "}
+                    {
+                      d.past.find((s) => s.exerciseId === e.exerciseId)!
+                        .weightKg
+                    }{" "}
+                    kg ×{" "}
+                    {d.past.find((s) => s.exerciseId === e.exerciseId)!.reps}{" "}
+                    reps
+                  </Body>
+                )}
                 {Array.from({ length: e.sets }, (_, i) => (
                   <LogSet
                     key={`${active.id}:${e.exerciseId}:${i}`}
@@ -162,6 +190,23 @@ export default function Train() {
             ))}
         </>
       )}
+      <Heading>Recent workout history</Heading>
+      {!d?.history?.length && (
+        <Body muted>Your completed sessions will appear here.</Body>
+      )}
+      {d?.history?.slice(0, 10).map((session) => (
+        <Card key={session.id}>
+          <Heading>
+            {days.find(([key]) => key === session.templateId)?.[1] ??
+              "Completed workout"}
+          </Heading>
+          <Body muted>
+            {new Date(
+              session.completedAt ?? session.startedAt,
+            ).toLocaleString()}
+          </Body>
+        </Card>
+      ))}
     </Screen>
   );
 }

@@ -50,6 +50,18 @@ export type Profile = {
   timezone: string;
 };
 export type Workout = {
+  history?: {
+    id: string;
+    templateId: string;
+    completedAt: string | null;
+    startedAt: string;
+  }[];
+  past?: {
+    exerciseId: string;
+    weightKg: string;
+    reps: number;
+    completedAt: string;
+  }[];
   plan: {
     templateId: string;
     templateName: string;

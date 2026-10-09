@@ -1,3 +1,4 @@
+import Svg, { Polyline, Line } from "react-native-svg";
 import { useState } from "react";
 import { useApi, useRefresh } from "../lib/query";
 import { api } from "../lib/api";
@@ -12,6 +13,46 @@ import {
   Status,
   useTask,
 } from "../components/ui";
+function WeightTrend({
+  values,
+}: {
+  values: { weightKg: string; measuredAt: string }[];
+}) {
+  const samples = [...values].reverse().slice(-30),
+    weights = samples.map((s) => Number(s.weightKg));
+  if (samples.length < 2)
+    return <Body muted>Log two weight check-ins to see your trend.</Body>;
+  const low = Math.min(...weights) - 0.5,
+    high = Math.max(...weights) + 0.5;
+  const points = weights
+    .map(
+      (w, i) =>
+        `${12 + (i * 296) / (weights.length - 1)},${115 - ((w - low) / (high - low)) * 95}`,
+    )
+    .join(" ");
+  return (
+    <>
+      <Svg
+        width="100%"
+        height={140}
+        viewBox="0 0 320 140"
+        accessibilityLabel="Weight history trend"
+      >
+        <Line x1={12} y1={115} x2={308} y2={115} stroke="#394563" />
+        <Polyline
+          points={points}
+          fill="none"
+          stroke="#4ce0ce"
+          strokeWidth={3}
+        />
+      </Svg>
+      <Body muted>
+        {samples[0].weightKg} → {samples.at(-1)!.weightKg} kg · {samples.length}{" "}
+        check-ins
+      </Body>
+    </>
+  );
+}
 export default function Progress() {
   const w = useApi<{ weights: { weightKg: string; measuredAt: string }[] }>(
       "weight",
@@ -33,6 +74,21 @@ export default function Progress() {
       refresh={() => refresh()}
     >
       <Status loading={w.isPending} error={w.error ?? n.error ?? task.error} />
+      <Card>
+        <Heading>Your journey at a glance</Heading>
+        <Body>
+          {g.data?.stats.weeklyWorkouts ?? 0} workouts this week ·{" "}
+          {g.data?.stats.nutritionDays ?? 0} fuel check-ins
+        </Body>
+        <Body muted>
+          Level {g.data?.stats.level ?? 1} ·{" "}
+          {g.data?.stats.lifetimeXp?.toLocaleString() ?? 0} lifetime XP
+        </Body>
+      </Card>
+      <Card>
+        <Heading>Weight trend</Heading>
+        <WeightTrend values={w.data?.weights ?? []} />
+      </Card>
       <Card>
         <Heading>Weight check-in</Heading>
         <Field

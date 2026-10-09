@@ -4,6 +4,16 @@ export default function More() {
   return (
     <Screen title="Your adventure" subtitle="Make it your own.">
       {[
+        [
+          "Fitness profile & InBody",
+          "Measurements, goals and scan history",
+          "/fitness-profile",
+        ],
+        [
+          "Daily check-in & plan editor",
+          "Recovery, preferences and exercise rotation",
+          "/training-studio",
+        ],
         ["Your hero", "Skins, accessories and effects", "/hero"],
         ["Quest log", "Daily wins, weekly raids and milestones", "/quests"],
         ["Equipment shop", "Spend your earned coins", "/shop"],

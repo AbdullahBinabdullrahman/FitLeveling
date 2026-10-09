@@ -139,6 +139,22 @@ function seed() {
       profile: { ...profile },
       active: null,
       activeSets: [],
+      history: [
+        {
+          id: "demo-history-1",
+          templateId: "upper",
+          startedAt: today + "T08:00:00Z",
+          completedAt: today + "T08:45:00Z",
+        },
+      ],
+      past: [
+        {
+          exerciseId: "bench",
+          weightKg: "40",
+          reps: 10,
+          completedAt: today + "T08:10:00Z",
+        },
+      ],
       plan: [
         {
           templateId: "upper",
@@ -201,6 +217,13 @@ function seed() {
         members: [
           {
             userId: self,
+            planRevision: 0,
+            checkins: [] as {
+              day: string;
+              energy: number;
+              sleepHours: string;
+              notes: string;
+            }[],
             alias: "Nova",
             status: "accepted",
             hobbies: ["Strength training", "Gaming"],
@@ -267,6 +290,13 @@ function seed() {
     nutrition: [{ day: today, calories: 2100, proteinG: 130 }],
     scans: [],
     coachSettings: { provider: "builtin", model: "", hasPersonalKey: false },
+    planRevision: 0,
+    checkins: [] as {
+      day: string;
+      energy: number;
+      sleepHours: string;
+      notes: string;
+    }[],
     alias: "Nova",
     cheered: [] as string[],
   };
@@ -304,6 +334,36 @@ export async function demoApi(
         return clone({ catalog, owned: state.owned });
       case "coach":
         return clone({ messages: state.coach });
+      case "coach/training":
+        return clone({
+          profile: state.workout.profile,
+          checkins: state.checkins,
+          versions: state.planRevision
+            ? [
+                {
+                  id: `00000000-0000-4000-8000-${String(state.planRevision).padStart(12, "0")}`,
+                },
+              ]
+            : [],
+          currentPlan: {
+            rationale: "Current training plan",
+            days: Array.from(
+              new Set(state.workout.plan.map((e) => e.templateId)),
+            ).map((id) => ({
+              name: state.workout.plan.find((e) => e.templateId === id)!
+                .templateName,
+              exercises: state.workout.plan
+                .filter((e) => e.templateId === id)
+                .map((e) => ({
+                  name: e.exerciseName,
+                  muscleGroup: "General",
+                  sets: e.sets,
+                  repMin: e.repMin,
+                  repMax: e.repMax,
+                })),
+            })),
+          },
+        });
       case "coach/settings":
         return clone(state.coachSettings);
       case "friends":
@@ -416,6 +476,50 @@ export async function demoApi(
       }
       break;
     }
+    case "coach/training":
+      if (method === "PATCH") {
+        if (
+          !Number.isFinite(v.energy) ||
+          v.energy < 1 ||
+          v.energy > 5 ||
+          !Number.isFinite(v.sleepHours) ||
+          v.sleepHours < 0 ||
+          v.sleepHours > 24
+        )
+          throw Error("Check energy and sleep limits");
+        state.workout.profile.goal = v.goal;
+        state.checkins = state.checkins.filter((c) => c.day !== v.day);
+        state.checkins.unshift({
+          day: v.day,
+          energy: v.energy,
+          sleepHours: String(v.sleepHours),
+          notes: v.notes,
+        });
+      } else {
+        const expected = state.planRevision
+          ? `00000000-0000-4000-8000-${String(state.planRevision).padStart(12, "0")}`
+          : null;
+        if (v.baseVersion !== expected)
+          throw Error("Your plan changed. Reload before saving.");
+        if (state.workout.active)
+          throw Error(
+            "Finish the active demo session before changing the rotation.",
+          );
+        if (!v.plan?.days?.length) throw Error("Add a training day");
+        state.planRevision++;
+        state.workout.plan = v.plan.days.flatMap((d: any, di: number) =>
+          d.exercises.map((e: any, ei: number) => ({
+            templateId: `demo-day-${di}`,
+            templateName: d.name,
+            exerciseId: `demo-exercise-${di}-${ei}`,
+            exerciseName: e.name,
+            sets: e.sets,
+            repMin: e.repMin,
+            repMax: e.repMax,
+          })),
+        );
+      }
+      break;
     case "workouts":
       if (method === "POST") {
         state.workout.active = { id: "demo-session", templateId: v.templateId };

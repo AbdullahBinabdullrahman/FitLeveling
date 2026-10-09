@@ -17,6 +17,16 @@ import Svg, {
   Ellipse,
   G,
 } from "react-native-svg";
+import {
+  HERO_JOINTS,
+  JOINT_PARENTS,
+  jointWorld,
+  jointRotation,
+  blendPose,
+  dancePose,
+  type HeroPose,
+  type HeroJoint,
+} from "../lib/hero-rig";
 import { cosmeticById } from "../lib/cosmetics";
 import type { Character as CharacterData } from "../lib/types";
 export default function Hero({
@@ -92,6 +102,32 @@ export default function Hero({
     animation.start();
     return () => animation.stop();
   }, [dance, emote, reduce, character.animations]);
+  const [pose, setPose] = useState<HeroPose>({}),
+    [selectedJoint, setSelectedJoint] = useState<HeroJoint>("head"),
+    [rigOpen, setRigOpen] = useState(false),
+    [phase, setPhase] = useState(0);
+  const movement = emote;
+  useEffect(() => {
+    if (
+      reduce ||
+      !character.animations ||
+      !["shuffle", "robot", "victory"].includes(movement)
+    )
+      return;
+    const started = Date.now();
+    const tick = setInterval(() => setPhase((Date.now() - started) / 1000), 50);
+    return () => clearInterval(tick);
+  }, [movement, reduce, character.animations]);
+  const rigPose = blendPose(
+    pose,
+    reduce || !character.animations ? {} : dancePose(movement, phase),
+  );
+  const jointInfo = HERO_JOINTS.find((j) => j[0] === selectedJoint)!;
+  const adjustJoint = (degrees: number) =>
+    setPose((old) => ({
+      ...old,
+      [selectedJoint]: Math.max(jointInfo[4], Math.min(jointInfo[5], degrees)),
+    }));
   const color =
     (
       {
@@ -108,6 +144,83 @@ export default function Hero({
     weapon = cosmeticById(character.weapon ?? "unarmed"),
     trinket = cosmeticById(character.trinket ?? "no-trinket"),
     vfx = cosmeticById(character.vfx ?? "no-vfx");
+  const rigWeapon = weapon && (
+    <G stroke={weapon.colors[1]} strokeWidth="2" strokeLinejoin="round">
+      {weapon.id === "ionblade" ? (
+        <>
+          <Path d="M233 223l18-86 7-13 3 16-18 86Z" fill={weapon.colors[0]} />
+          <Path d="M224 221l27 6M236 224l-5 19" strokeWidth="6" />
+          <Path d="M252 141l-16 76" stroke="#fff" opacity=".8" />
+        </>
+      ) : weapon.id === "voidreaper" ? (
+        <>
+          <Path d="M238 260l10-123" strokeWidth="7" />
+          <Path
+            d="M248 138C211 87 280 73 294 129C270 110 249 115 248 138Z"
+            fill={weapon.colors[2]}
+          />
+          <Path
+            d="M248 138C232 100 276 91 294 129"
+            fill="none"
+            stroke={weapon.colors[0]}
+            strokeWidth="4"
+          />
+        </>
+      ) : weapon.id === "frostbow" ? (
+        <>
+          <Path
+            d="M236 124Q302 180 236 248Q272 180 236 124Z"
+            fill={weapon.colors[2]}
+          />
+          <Path
+            d="M236 124L252 182L236 248M226 182h60l-8-7m8 7-8 7"
+            fill="none"
+            stroke={weapon.colors[0]}
+          />
+          <Circle cx="252" cy="182" r="5" fill={weapon.colors[1]} />
+        </>
+      ) : weapon.id === "stormlance" ? (
+        <>
+          <Path d="M237 260L252 143" strokeWidth="6" />
+          <Path d="M252 102l-17 49 17-11 13 12Z" fill={weapon.colors[0]} />
+          <Path
+            d="M249 145l12 18-18 9 14 16-18 13"
+            fill="none"
+            strokeWidth="3"
+          />
+        </>
+      ) : weapon.id === "novagauntlet" ? (
+        <>
+          <Rect
+            x="216"
+            y="190"
+            width="54"
+            height="43"
+            rx="12"
+            fill={weapon.colors[2]}
+          />
+          <Path
+            d="M223 199h38M224 213h7m8 0h7m8 0h7"
+            stroke={weapon.colors[0]}
+            strokeWidth="4"
+          />
+          <Circle cx="241" cy="224" r="9" fill={weapon.colors[1]} />
+        </>
+      ) : weapon.id === "sunhammer" ? (
+        <>
+          <Path d="M237 237l8-73" stroke="#654b31" strokeWidth="8" />
+          <Path d="M224 145h48v28h-48l-8-14Z" fill={weapon.colors[2]} />
+          <Circle cx="244" cy="159" r="9" fill={weapon.colors[0]} />
+        </>
+      ) : (
+        <>
+          <Path d="M240 253l10-102" strokeWidth="5" />
+          <Path d="M250 112l15 21-17 23-13-23Z" fill={weapon.colors[0]} />
+          <Path d="M250 112l-2 44M235 133h30" stroke={weapon.colors[2]} />
+        </>
+      )}
+    </G>
+  );
   const art = (
     <Svg
       width={size}
@@ -190,7 +303,7 @@ export default function Hero({
           )}
         </G>
       )}
-      <G>
+      <G transform={jointRotation("body", rigPose)}>
         {trinket?.id === "scoutpack" && (
           <G fill="#263750" stroke={trinket.colors[1]} strokeWidth="2">
             <Rect x="96" y="155" width="25" height="75" rx="8" />
@@ -222,42 +335,43 @@ export default function Hero({
             strokeWidth="5"
           />
         )}
-        <G>
-          <Path
-            d="M123 232L120 277Q118 291 135 291H149L153 236Z"
-            fill={`url(#${id}-body)`}
-          />
-          <Path d="M120 278H148V294H116Q113 283 120 278" fill="#263650" />
-          <Path
-            d="M124 283H145"
-            stroke={color}
-            strokeWidth="4"
-            strokeLinecap="round"
-          />
+
+        <G transform={jointRotation("leftHip", rigPose)}>
+          <Path d="M123 232L123 264H151L153 236Z" fill={`url(#${id}-body)`} />
+          <G transform={jointRotation("leftKnee", rigPose)}>
+            <Path d="M123 260L120 282H148L151 260Z" fill={`url(#${id}-body)`} />
+            <G transform={jointRotation("leftAnkle", rigPose)}>
+              <Path d="M120 278H148V294H116Q113 283 120 278" fill="#263650" />
+              <Path
+                d="M124 283H145"
+                stroke={color}
+                strokeWidth="4"
+                strokeLinecap="round"
+              />
+            </G>
+          </G>
         </G>
-        <G>
-          <Path
-            d="M167 236L171 290H190Q204 290 201 277L197 232Z"
-            fill={`url(#${id}-body)`}
-          />
-          <Path d="M172 278H200Q209 284 204 294H172Z" fill="#263650" />
-          <Path
-            d="M178 283H197"
-            stroke={color}
-            strokeWidth="4"
-            strokeLinecap="round"
-          />
+        <G transform={jointRotation("rightHip", rigPose)}>
+          <Path d="M167 236L170 264H199L197 232Z" fill={`url(#${id}-body)`} />
+          <G transform={jointRotation("rightKnee", rigPose)}>
+            <Path d="M170 260L172 282H201L199 260Z" fill={`url(#${id}-body)`} />
+            <G transform={jointRotation("rightAnkle", rigPose)}>
+              <Path d="M172 278H200Q209 284 204 294H172Z" fill="#263650" />
+              <Path
+                d="M178 283H197"
+                stroke={color}
+                strokeWidth="4"
+                strokeLinecap="round"
+              />
+            </G>
+          </G>
         </G>
-        <G>
+        <G transform={jointRotation("leftShoulder", rigPose)}>
           <Path
-            d="M113 163Q87 169 80 211L92 232Q107 234 112 218L129 180Z"
+            d="M113 163Q90 171 84 206L106 210L129 180Z"
             fill={`url(#${id}-body)`}
             stroke="#536484"
             strokeWidth="2"
-          />
-          <Path
-            d="M87 218Q77 229 86 239Q99 246 108 233L103 219Z"
-            fill="#293b55"
           />
           <Path
             d="M94 179L88 199"
@@ -265,17 +379,25 @@ export default function Hero({
             strokeWidth="5"
             strokeLinecap="round"
           />
+          <G transform={jointRotation("leftElbow", rigPose)}>
+            <Path
+              d="M84 200L80 215L92 232Q108 233 112 213L106 200Z"
+              fill={`url(#${id}-body)`}
+            />
+            <G transform={jointRotation("leftWrist", rigPose)}>
+              <Path
+                d="M87 218Q77 229 86 239Q99 246 108 233L103 219Z"
+                fill="#293b55"
+              />
+            </G>
+          </G>
         </G>
-        <G>
+        <G transform={jointRotation("rightShoulder", rigPose)}>
           <Path
-            d="M207 163Q233 169 240 211L228 232Q213 234 208 218L191 180Z"
+            d="M207 163Q230 171 236 206L214 210L191 180Z"
             fill={`url(#${id}-body)`}
             stroke="#536484"
             strokeWidth="2"
-          />
-          <Path
-            d="M217 219L212 233Q220 246 234 239Q243 229 233 218Z"
-            fill="#293b55"
           />
           <Path
             d="M227 179L233 199"
@@ -283,6 +405,19 @@ export default function Hero({
             strokeWidth="5"
             strokeLinecap="round"
           />
+          <G transform={jointRotation("rightElbow", rigPose)}>
+            <Path
+              d="M236 200L240 215L228 232Q212 233 208 213L214 200Z"
+              fill={`url(#${id}-body)`}
+            />
+            <G transform={jointRotation("rightWrist", rigPose)}>
+              <Path
+                d="M217 219L212 233Q220 246 234 239Q243 229 233 218Z"
+                fill="#293b55"
+              />
+              {rigWeapon}
+            </G>
+          </G>
         </G>
         <Path
           d="M122 153Q160 139 198 153L205 219Q203 241 180 245H140Q117 241 115 219Z"
@@ -345,7 +480,7 @@ export default function Hero({
             fill={color}
           />
         )}
-        <G>
+        <G transform={jointRotation("head", rigPose)}>
           <Path
             d="M126 90L113 71L132 74L147 89"
             fill={color}
@@ -413,101 +548,18 @@ export default function Hero({
               strokeWidth="2"
             />
           )}
+          {trinket?.id === "beatphones" && (
+            <G
+              fill={trinket.colors[2]}
+              stroke={trinket.colors[1]}
+              strokeWidth="4"
+            >
+              <Path d="M108 130C105 68 215 68 212 130" fill="none" />
+              <Rect x="98" y="113" width="17" height="34" rx="7" />
+              <Rect x="205" y="113" width="17" height="34" rx="7" />
+            </G>
+          )}
         </G>
-        {trinket?.id === "beatphones" && (
-          <G
-            fill={trinket.colors[2]}
-            stroke={trinket.colors[1]}
-            strokeWidth="4"
-          >
-            <Path d="M108 130C105 68 215 68 212 130" fill="none" />
-            <Rect x="98" y="113" width="17" height="34" rx="7" />
-            <Rect x="205" y="113" width="17" height="34" rx="7" />
-          </G>
-        )}
-        {weapon && (
-          <G stroke={weapon.colors[1]} strokeWidth="2" strokeLinejoin="round">
-            {weapon.id === "ionblade" ? (
-              <>
-                <Path
-                  d="M233 223l18-86 7-13 3 16-18 86Z"
-                  fill={weapon.colors[0]}
-                />
-                <Path d="M224 221l27 6M236 224l-5 19" strokeWidth="6" />
-                <Path d="M252 141l-16 76" stroke="#fff" opacity=".8" />
-              </>
-            ) : weapon.id === "voidreaper" ? (
-              <>
-                <Path d="M238 260l10-123" strokeWidth="7" />
-                <Path
-                  d="M248 138C211 87 280 73 294 129C270 110 249 115 248 138Z"
-                  fill={weapon.colors[2]}
-                />
-                <Path
-                  d="M248 138C232 100 276 91 294 129"
-                  fill="none"
-                  stroke={weapon.colors[0]}
-                  strokeWidth="4"
-                />
-              </>
-            ) : weapon.id === "frostbow" ? (
-              <>
-                <Path
-                  d="M236 124Q302 180 236 248Q272 180 236 124Z"
-                  fill={weapon.colors[2]}
-                />
-                <Path
-                  d="M236 124L252 182L236 248M226 182h60l-8-7m8 7-8 7"
-                  fill="none"
-                  stroke={weapon.colors[0]}
-                />
-                <Circle cx="252" cy="182" r="5" fill={weapon.colors[1]} />
-              </>
-            ) : weapon.id === "stormlance" ? (
-              <>
-                <Path d="M237 260L252 143" strokeWidth="6" />
-                <Path
-                  d="M252 102l-17 49 17-11 13 12Z"
-                  fill={weapon.colors[0]}
-                />
-                <Path
-                  d="M249 145l12 18-18 9 14 16-18 13"
-                  fill="none"
-                  strokeWidth="3"
-                />
-              </>
-            ) : weapon.id === "novagauntlet" ? (
-              <>
-                <Rect
-                  x="216"
-                  y="190"
-                  width="54"
-                  height="43"
-                  rx="12"
-                  fill={weapon.colors[2]}
-                />
-                <Path
-                  d="M223 199h38M224 213h7m8 0h7m8 0h7"
-                  stroke={weapon.colors[0]}
-                  strokeWidth="4"
-                />
-                <Circle cx="241" cy="224" r="9" fill={weapon.colors[1]} />
-              </>
-            ) : weapon.id === "sunhammer" ? (
-              <>
-                <Path d="M237 237l8-73" stroke="#654b31" strokeWidth="8" />
-                <Path d="M224 145h48v28h-48l-8-14Z" fill={weapon.colors[2]} />
-                <Circle cx="244" cy="159" r="9" fill={weapon.colors[0]} />
-              </>
-            ) : (
-              <>
-                <Path d="M240 253l10-102" strokeWidth="5" />
-                <Path d="M250 112l15 21-17 23-13-23Z" fill={weapon.colors[0]} />
-                <Path d="M250 112l-2 44M235 133h30" stroke={weapon.colors[2]} />
-              </>
-            )}
-          </G>
-        )}
         {level >= 5 && (
           <G stroke={color} strokeWidth="2">
             <Path d="M57 101V117M49 109H65M259 224V240M251 232H267" />
@@ -515,6 +567,27 @@ export default function Hero({
           </G>
         )}
       </G>
+      {rigOpen && (
+        <G fill="none" stroke="#4ce0ce" strokeWidth="2">
+          {HERO_JOINTS.map(([joint]) => {
+            const [x, y] = jointWorld(joint, rigPose);
+            const parent = JOINT_PARENTS[joint];
+            const from = parent ? jointWorld(parent, rigPose) : [x, y];
+            return (
+              <G key={joint}>
+                <Path d={`M${from[0]} ${from[1]}L${x} ${y}`} />
+                <Circle
+                  cx={x}
+                  cy={y}
+                  r={joint === selectedJoint ? 7 : 4}
+                  fill={joint === selectedJoint ? "#ffcc75" : "#4ce0ce"}
+                  stroke="#0a1023"
+                />
+              </G>
+            );
+          })}
+        </G>
+      )}
     </Svg>
   );
   const effect = vfx ? (
@@ -699,6 +772,91 @@ export default function Hero({
               <Text style={{ color: "#f3efff", fontSize: 12 }}>{label}</Text>
             </Pressable>
           ))}
+        </View>
+      )}
+      {showEmotes && (
+        <View style={{ alignSelf: "stretch", padding: 12, gap: 10 }}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => {
+              setRigOpen((v) => !v);
+              setEmote("idle");
+            }}
+            style={{
+              padding: 12,
+              backgroundColor: "#252a42",
+              borderRadius: 12,
+            }}
+          >
+            <Text style={{ color: "#f4efff" }}>
+              {rigOpen
+                ? "Close skeleton studio"
+                : "Skeleton studio · control each part"}
+            </Text>
+          </Pressable>
+          {rigOpen && (
+            <>
+              <Text style={{ color: "#b9c4dd" }}>
+                14 joints · equipment follows the hand · pose preview on this
+                device
+              </Text>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6 }}>
+                {HERO_JOINTS.map(([key, label]) => (
+                  <Pressable
+                    key={key}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: selectedJoint === key }}
+                    onPress={() => {
+                      setSelectedJoint(key);
+                      setEmote("idle");
+                    }}
+                    style={{
+                      padding: 8,
+                      borderRadius: 10,
+                      backgroundColor:
+                        selectedJoint === key ? "#48406b" : "#20273d",
+                    }}
+                  >
+                    <Text style={{ color: "#f4efff", fontSize: 12 }}>
+                      {label}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+              <Text style={{ color: "#f4efff" }}>
+                {jointInfo[1]}: {pose[selectedJoint] ?? 0}°
+              </Text>
+              <View style={{ flexDirection: "row", gap: 10 }}>
+                {[
+                  [-5, "Rotate −5°"],
+                  [5, "Rotate +5°"],
+                ].map(([delta, label]) => (
+                  <Pressable
+                    key={delta}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${jointInfo[1]} ${label}`}
+                    onPress={() =>
+                      adjustJoint((pose[selectedJoint] ?? 0) + Number(delta))
+                    }
+                    style={{
+                      padding: 12,
+                      borderRadius: 10,
+                      backgroundColor: "#252a42",
+                    }}
+                  >
+                    <Text style={{ color: "#f4efff" }}>{label}</Text>
+                  </Pressable>
+                ))}
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => setPose({})}
+                  style={{ padding: 12 }}
+                >
+                  <Text style={{ color: "#a5e8de" }}>Reset pose</Text>
+                </Pressable>
+              </View>
+            </>
+          )}
         </View>
       )}
     </View>

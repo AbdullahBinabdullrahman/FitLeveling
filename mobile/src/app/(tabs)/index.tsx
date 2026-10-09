@@ -422,6 +422,17 @@ export default function Home() {
           </Card>
         </View>
         <View style={{ flex: 1 }}>
+          <Heading>Today’s quests</Heading>
+          {g.quests
+            .filter((q) => q.kind === "daily")
+            .map((q) => (
+              <QuestCard
+                key={q.id}
+                quest={q}
+                busy={task.busy}
+                claim={() => claim(q)}
+              />
+            ))}
           <Card>
             <Text style={s.eyebrow}>NEED A SPARK?</Text>
             <Heading>Your companion has your back.</Heading>
