@@ -3,7 +3,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: "FitLeveling",
   slug: "fitleveling",
-  version: "1.0.0",
+  version: "1.0.1",
   scheme: "fitleveling",
   orientation: "portrait",
   userInterfaceStyle: "dark",

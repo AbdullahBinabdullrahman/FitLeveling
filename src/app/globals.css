@@ -2599,3 +2599,180 @@ input[type="checkbox"] {
   border: 1px solid #475170;
   border-radius: 10px;
 }
+
+/* Shared interaction polish: finite motion and clear state feedback. */
+.view-transition {
+  min-width: 0;
+  outline: none;
+}
+.working-indicator {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 20px;
+  border: 1px solid #4ce0ce66;
+  border-radius: 18px;
+  background: #182537f5;
+  box-shadow: 0 12px 36px #0006;
+  font-size: 14px;
+}
+.working-spinner {
+  width: 17px;
+  height: 17px;
+  border: 2px solid #4ce0ce40;
+  border-top-color: #4ce0ce;
+  border-radius: 50%;
+}
+.loading-skeleton {
+  display: grid;
+  gap: 14px;
+  padding-bottom: 22px;
+}
+.loading-skeleton > div {
+  height: 18px;
+  border-radius: 10px;
+  background: linear-gradient(100deg, #24334b, #354561, #24334b);
+  background-size: 200% 100%;
+}
+.loading-skeleton > div:first-child {
+  height: 110px;
+}
+.loading-skeleton > div:last-child {
+  width: 65%;
+}
+.collection-empty {
+  display: grid;
+  gap: 12px;
+  justify-items: start;
+}
+button:active:not(:disabled) {
+  filter: brightness(1.1);
+}
+input,
+select,
+textarea {
+  transition:
+    border-color 160ms ease,
+    background-color 160ms ease,
+    box-shadow 160ms ease;
+}
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  border-color: #4ce0ce;
+  box-shadow: 0 0 0 4px #4ce0ce15;
+}
+.desktop-nav .navbtn {
+  position: relative;
+}
+.desktop-nav .navbtn.active::after {
+  content: "";
+  position: absolute;
+  bottom: 3px;
+  left: 28%;
+  right: 28%;
+  height: 2px;
+  border-radius: 4px;
+  background: #4ce0ce;
+}
+@media (hover: hover) and (pointer: fine) {
+  .card,
+  .quest-card,
+  .collectible {
+    transition:
+      border-color 180ms ease,
+      box-shadow 180ms ease;
+  }
+  .card:has(button):hover,
+  .quest-card:hover,
+  .collectible:hover {
+    border-color: #8b79ba88;
+    box-shadow: 0 10px 34px #0004;
+  }
+  .navbtn:hover:not(.active) {
+    background: #25334b;
+    color: #edf0ff;
+  }
+  .collectible-art:hover {
+    background: radial-gradient(ellipse at center, #b89aff20, transparent 72%);
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .app-shell:not(.reduce-motion) .view-transition {
+    animation: view-arrive 280ms ease-out;
+  }
+  .app-shell:not(.reduce-motion) .preview-reveal {
+    animation: preview-arrive 320ms ease-out both;
+  }
+  .app-shell:not(.reduce-motion) .collection-reveal > article {
+    animation: view-arrive 280ms ease-out both;
+  }
+  .app-shell:not(.reduce-motion) .collection-reveal > article:nth-child(2) {
+    animation-delay: 35ms;
+  }
+  .app-shell:not(.reduce-motion) .collection-reveal > article:nth-child(3) {
+    animation-delay: 70ms;
+  }
+  .app-shell:not(.reduce-motion) .save-toast {
+    animation: toast-arrive 220ms ease-out both;
+  }
+  .app-shell:not(.reduce-motion) .working-spinner {
+    animation: orbit 800ms linear infinite;
+  }
+  .app-shell:not(.reduce-motion) .loading-skeleton > div {
+    animation: skeleton-sweep 1600ms ease-in-out infinite;
+  }
+  .app-shell:not(.reduce-motion) button:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+}
+@keyframes view-arrive {
+  from {
+    opacity: 0.35;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes preview-arrive {
+  from {
+    opacity: 0.4;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+@keyframes toast-arrive {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes skeleton-sweep {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+@media (max-width: 700px) {
+  .working-indicator {
+    bottom: 82px;
+    max-width: calc(100% - 32px);
+    width: max-content;
+  }
+}

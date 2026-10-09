@@ -19,6 +19,7 @@ import { StatusBar } from "expo-status-bar";
 import * as Notifications from "expo-notifications";
 import { AuthProvider, useAuth } from "../lib/auth";
 import { colors } from "../components/ui";
+import { ExperienceProvider, useExperience } from "../components/Experience";
 const queryClient = new QueryClient();
 function DemoBanner() {
   const { logout } = useAuth();
@@ -37,6 +38,7 @@ function DemoBanner() {
 }
 function Navigation() {
   const { user, loading } = useAuth();
+  const { motion } = useExperience();
   useEffect(() => {
     const s = AppState.addEventListener("change", (state) =>
       focusManager.setFocused(state === "active"),
@@ -75,8 +77,11 @@ function Navigation() {
         headerTintColor: colors.text,
         contentStyle: { backgroundColor: colors.bg },
         headerShadowVisible: false,
-        animation:
-          Platform.OS === "ios" ? "slide_from_right" : "fade_from_bottom",
+        animation: !motion
+          ? "none"
+          : Platform.OS === "ios"
+            ? "slide_from_right"
+            : "fade_from_bottom",
       }}
     >
       <Stack.Protected guard={!!user}>
@@ -86,7 +91,10 @@ function Navigation() {
         <Stack.Screen name="hero" options={{ title: "Your hero" }} />
         <Stack.Screen name="habits" options={{ title: "Habits" }} />
         <Stack.Screen name="progress" options={{ title: "Progress" }} />
-        <Stack.Screen name="training-studio" options={{ title: "Training studio" }} />
+        <Stack.Screen
+          name="training-studio"
+          options={{ title: "Training studio" }}
+        />
         <Stack.Screen
           name="fitness-profile"
           options={{ title: "Fitness profile" }}
@@ -118,9 +126,11 @@ export default function RootLayout() {
         <SafeAreaProvider>
           <QueryClientProvider client={queryClient}>
             <AuthProvider>
-              <StatusBar style="light" />
-              {DEMO && <DemoBanner />}
-              <Navigation />
+              <ExperienceProvider>
+                <StatusBar style="light" />
+                {DEMO && <DemoBanner />}
+                <Navigation />
+              </ExperienceProvider>
             </AuthProvider>
           </QueryClientProvider>
         </SafeAreaProvider>

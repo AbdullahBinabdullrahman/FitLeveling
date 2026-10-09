@@ -121,6 +121,20 @@ export default function App() {
   const [rewards, setRewards] = useState<Reward[]>([]);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [saving, setSaving] = useState(false);
+  const contentRef = useRef<HTMLElement>(null);
+  const previousTab = useRef(tab);
+  useEffect(() => {
+    if (previousTab.current === tab) return;
+    previousTab.current = tab;
+    contentRef.current?.focus({ preventScroll: true });
+    window.scrollTo({ top: 0, behavior: "auto" });
+  }, [tab]);
+  useEffect(() => {
+    if (!message) return;
+    const timer = setTimeout(() => setMessage(""), 6000);
+    return () => clearTimeout(timer);
+  }, [message]);
   const [celebration, setCelebration] = useState<CelebrationData | null>(null);
   const [claiming, setClaiming] = useState<string | null>(null);
   const [session, setSession] = useState<{
@@ -171,6 +185,7 @@ export default function App() {
   const act = async (fn: () => Promise<unknown>) => {
     if (actionBusy.current) return false;
     actionBusy.current = true;
+    setSaving(true);
     setError("");
     setMessage("");
     try {
@@ -187,6 +202,7 @@ export default function App() {
       return false;
     } finally {
       actionBusy.current = false;
+      setSaving(false);
     }
   };
   const claim = async (quest: Quest) => {
@@ -324,108 +340,129 @@ export default function App() {
           </button>
         </div>
       )}
-      {tab === "Settings" ? (
-        <>
-          <AccountSettings
-            onSaved={(next) => {
-              setUser(next);
-              load().catch((e) => setError(e.message));
-            }}
-          />
-          {data && (
-            <ProfileView
-              profile={data?.profile}
-              scans={scans}
-              act={act}
-              logout={() => logout().catch((e) => setError(e.message))}
-            />
-          )}
-        </>
-      ) : !game || !data ? (
-        <section className="card">
-          <p className="muted mb-4">
-            {error
-              ? "Your game couldn’t load. Please retry."
-              : "Loading your companion and missions…"}
-          </p>
-          <button
-            className="btn"
-            onClick={() =>
-              load()
-                .then(() => setError(""))
-                .catch((e) => setError(e.message))
-            }
-          >
-            Retry loading
-          </button>
-          <button
-            className="ghost ml-3"
-            onClick={() => logout().catch((e) => setError(e.message))}
-          >
-            Sign out
-          </button>
-        </section>
-      ) : (
-        <>
-          {tab === "Home" && (
-            <Dashboard
-              game={game}
-              name={user.name}
-              onNavigate={setTab}
-              onClaim={claim}
-              pending={claiming}
-            />
-          )}
-          {tab === "Quests" && (
-            <QuestsView
-              game={game}
-              onClaim={claim}
-              pending={claiming}
-              onTrain={() => setTab("Train")}
-            />
-          )}
-          {tab === "Hero" && (
-            <CharacterView key={user.id} game={game} onSave={saveCharacter} />
-          )}
-          {tab === "Coach" && (
-            <CoachView key={user.id} game={game} onPlanApplied={load} />
-          )}
-          {tab === "Train" && (
-            <Train
-              game={game}
-              data={data}
-              session={session}
-              selected={selected}
-              setSelected={setSelected}
-              act={act}
-              setSession={setSession}
-              celebrate={setCelebration}
-            />
-          )}
-          {tab === "Progress" && (
-            <Progress weights={weights} scans={scans} data={data} act={act} />
-          )}
-          {tab === "Community" && <CommunityView onNavigate={setTab} />}
-          {tab === "Habits" && <HabitsView />}
-          {tab === "Shop" && (
-            <>
-              <CosmeticShop game={game} onChange={load} />
-              <details className="card mt-8">
-                <summary className="font-bold cursor-pointer">
-                  Personal rewards
-                </summary>
-                <div className="mt-5">
-                  <Shop
-                    rewards={rewards}
-                    coins={data.profile.coins}
-                    act={act}
-                  />
-                </div>
-              </details>
-            </>
-          )}
-        </>
+      {saving && (
+        <div className="working-indicator" role="status">
+          <span className="working-spinner" aria-hidden="true" /> Saving your
+          changes…
+        </div>
       )}
+      <main
+        ref={contentRef}
+        key={tab}
+        tabIndex={-1}
+        aria-label={`${tab} view`}
+        className="view-transition"
+      >
+        {tab === "Settings" ? (
+          <>
+            <AccountSettings
+              onSaved={(next) => {
+                setUser(next);
+                load().catch((e) => setError(e.message));
+              }}
+            />
+            {data && (
+              <ProfileView
+                profile={data?.profile}
+                scans={scans}
+                act={act}
+                logout={() => logout().catch((e) => setError(e.message))}
+              />
+            )}
+          </>
+        ) : !game || !data ? (
+          <section className="card" aria-busy={!error}>
+            {!error && (
+              <div className="loading-skeleton" aria-hidden="true">
+                <div />
+                <div />
+                <div />
+              </div>
+            )}
+            <p className="muted mb-4">
+              {error
+                ? "Your game couldn’t load. Please retry."
+                : "Loading your companion and missions…"}
+            </p>
+            <button
+              className="btn"
+              onClick={() =>
+                load()
+                  .then(() => setError(""))
+                  .catch((e) => setError(e.message))
+              }
+            >
+              Retry loading
+            </button>
+            <button
+              className="ghost ml-3"
+              onClick={() => logout().catch((e) => setError(e.message))}
+            >
+              Sign out
+            </button>
+          </section>
+        ) : (
+          <>
+            {tab === "Home" && (
+              <Dashboard
+                game={game}
+                name={user.name}
+                onNavigate={setTab}
+                onClaim={claim}
+                pending={claiming}
+              />
+            )}
+            {tab === "Quests" && (
+              <QuestsView
+                game={game}
+                onClaim={claim}
+                pending={claiming}
+                onTrain={() => setTab("Train")}
+              />
+            )}
+            {tab === "Hero" && (
+              <CharacterView key={user.id} game={game} onSave={saveCharacter} />
+            )}
+            {tab === "Coach" && (
+              <CoachView key={user.id} game={game} onPlanApplied={load} />
+            )}
+            {tab === "Train" && (
+              <Train
+                game={game}
+                data={data}
+                session={session}
+                selected={selected}
+                setSelected={setSelected}
+                act={act}
+                setSession={setSession}
+                celebrate={setCelebration}
+              />
+            )}
+            {tab === "Progress" && (
+              <Progress weights={weights} scans={scans} data={data} act={act} />
+            )}
+            {tab === "Community" && <CommunityView onNavigate={setTab} />}
+            {tab === "Habits" && <HabitsView />}
+            {tab === "Shop" && (
+              <>
+                <CosmeticShop game={game} onChange={load} />
+                <details className="card mt-8">
+                  <summary className="font-bold cursor-pointer">
+                    Personal rewards
+                  </summary>
+                  <div className="mt-5">
+                    <Shop
+                      rewards={rewards}
+                      coins={data.profile.coins}
+                      act={act}
+                    />
+                  </div>
+                </details>
+              </>
+            )}
+          </>
+        )}
+      </main>
       <nav className="bottom-nav" aria-label="Main navigation">
         {NAV.slice(0, 5).map(({ name, icon: Icon }) => (
           <button

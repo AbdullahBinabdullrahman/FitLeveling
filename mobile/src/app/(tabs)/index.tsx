@@ -21,6 +21,7 @@ import type { Game, Quest } from "../../lib/types";
 import Hero from "../../components/Hero";
 import {
   Screen,
+  ProgressMeter,
   Card,
   Heading,
   Body,
@@ -39,26 +40,6 @@ function evolution(total: number) {
   }
   return { level, remainder, needed: Math.round(100 * level ** 1.35) };
 }
-function ProgressBar({
-  value,
-  color = colors.mint,
-}: {
-  value: number;
-  color?: string;
-}) {
-  return (
-    <View style={s.track}>
-      <View
-        style={{
-          height: 6,
-          width: `${(Math.min(100, Math.max(0, value)) * 100) / 100}%`,
-          backgroundColor: color,
-          borderRadius: 8,
-        }}
-      />
-    </View>
-  );
-}
 function QuestCard({
   quest,
   busy,
@@ -76,7 +57,7 @@ function QuestCard({
       </Row>
       <Heading>{quest.title}</Heading>
       <Body muted>{quest.description}</Body>
-      <ProgressBar
+      <ProgressMeter
         value={(quest.current / quest.target) * 100}
         color={colors.violet}
       />
@@ -340,7 +321,7 @@ export default function Home() {
                 </View>
               ))}
             </Row>
-            <ProgressBar value={(Math.min(activeDays, 3) / 3) * 100} />
+            <ProgressMeter value={(Math.min(activeDays, 3) / 3) * 100} />
             <Body>
               ⚡ {boss?.xp ?? 250} XP · ◈ {boss?.coins ?? 75} coins
             </Body>

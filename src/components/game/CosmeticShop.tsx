@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Coins, Check, Sparkles, LockKeyhole } from "lucide-react";
 import { COSMETICS, type Cosmetic } from "@/lib/community";
 import type { GameData } from "@/lib/game";
@@ -11,6 +11,7 @@ export default function CosmeticShop({
   game: GameData;
   onChange: () => Promise<void>;
 }) {
+  const featureRef = useRef<HTMLElement>(null);
   const [owned, setOwned] = useState<string[]>([]),
     [loaded, setLoaded] = useState(false),
     [filter, setFilter] = useState("all"),
@@ -87,9 +88,10 @@ export default function CosmeticShop({
         </p>
       )}
       <section
+        ref={featureRef}
         className={`collection-feature rarity-${preview.rarity.toLowerCase()}`}
       >
-        <div className="collection-preview">
+        <div key={preview.id} className="collection-preview preview-reveal">
           <Character character={character} level={game.stats.level} />
         </div>
         <div className="collection-feature-copy">
@@ -154,7 +156,20 @@ export default function CosmeticShop({
           {owned.length} / {COSMETICS.length} collected
         </span>
       </div>
-      <div className="collection-grid">
+      {!visible.length && (
+        <div className="card collection-empty" role="status">
+          <Sparkles size={28} />
+          <h3>Your collection starts here.</h3>
+          <p className="muted">
+            Choose an item to preview its look. Earn coins through quests and
+            training.
+          </p>
+          <button className="btn" onClick={() => setFilter("all")}>
+            Explore all items
+          </button>
+        </div>
+      )}
+      <div key={filter} className="collection-grid collection-reveal">
         {visible.map((item) => (
           <article
             className={`collectible rarity-${item.rarity.toLowerCase()} ${preview.id === item.id ? "previewing" : ""}`}
@@ -164,7 +179,18 @@ export default function CosmeticShop({
               className="collectible-art"
               aria-label={`Preview ${item.name}`}
               aria-pressed={preview.id === item.id}
-              onClick={() => setPreview(item)}
+              onClick={() => {
+                setPreview(item);
+                featureRef.current?.scrollIntoView({
+                  block: "start",
+                  behavior:
+                    game.character.animations &&
+                    !window.matchMedia("(prefers-reduced-motion: reduce)")
+                      .matches
+                      ? "smooth"
+                      : "auto",
+                });
+              }}
             >
               <Character
                 character={{

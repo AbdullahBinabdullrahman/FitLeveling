@@ -21,10 +21,15 @@ export default function Shop() {
     economy = useApi<{ supply: number; availableRewards: number }>("economy"),
     refresh = useRefresh(),
     task = useTask(),
-    [filter, setFilter] = useState("all");
+    [filter, setFilter] = useState("all"),
+    [previewId, setPreviewId] = useState<string>(),
+    [previewJump, setPreviewJump] = useState(0),
+    [pendingId, setPendingId] = useState<string>();
+  const preview = q.data?.catalog.find((item) => item.id === previewId);
   return (
     <Screen
       title="Find your look"
+      scrollToTopKey={previewJump}
       subtitle={`${g.data?.stats.coins ?? 0} coins · Earned through your journey`}
       refresh={() => q.refetch()}
       refreshing={q.isRefetching}
@@ -37,12 +42,37 @@ export default function Shop() {
           rewards. Equipment purchases replenish the reward bank.
         </Body>
       )}
+      {task.notice && <Body>{task.notice}</Body>}
       {g.data && (
-        <Hero
-          character={g.data.character}
-          level={g.data.stats.level}
-          size={250}
-        />
+        <Card>
+          <Heading>
+            {preview ? `Preview · ${preview.name}` : "Your equipped look"}
+          </Heading>
+          <Hero
+            key={preview?.id ?? "equipped"}
+            character={
+              preview
+                ? { ...g.data.character, [preview.slot]: preview.id }
+                : g.data.character
+            }
+            level={g.data.stats.level}
+            size={250}
+            showEmotes
+          />
+          {preview && (
+            <>
+              <Body muted>{preview.description}</Body>
+              <Body>
+                {preview.rarity} · {preview.price} coins · Preview only
+              </Body>
+              <Button
+                secondary
+                title="Back to equipped look"
+                onPress={() => setPreviewId(undefined)}
+              />
+            </>
+          )}
+        </Card>
       )}
       <Row>
         {[
@@ -58,6 +88,7 @@ export default function Shop() {
             key={key}
             title={label}
             secondary={filter !== key}
+            selected={filter === key}
             onPress={() => setFilter(key)}
           />
         ))}
@@ -78,11 +109,24 @@ export default function Shop() {
                 <Card>
                   {g.data && (
                     <Hero
-                      character={{ ...g.data.character, [i.slot]: i.id }}
+                      character={{
+                        ...g.data.character,
+                        [i.slot]: i.id,
+                        animations: false,
+                      }}
                       size={120}
                     />
                   )}
                   <Heading>{i.name}</Heading>
+                  <Button
+                    secondary
+                    title={`Preview ${i.name}`}
+                    selected={previewId === i.id}
+                    onPress={() => {
+                      setPreviewId(i.id);
+                      setPreviewJump((n) => n + 1);
+                    }}
+                  />
                   <Body muted>{i.description}</Body>
                   <Body>
                     {i.rarity} · {i.price} coins
@@ -95,18 +139,29 @@ export default function Shop() {
                           ? "Equip"
                           : `Unlock · ${i.price} coins`
                     }
+                    busy={task.busy && pendingId === i.id}
                     disabled={
-                      task.busy ||
+                      (task.busy && pendingId !== i.id) ||
                       equipped ||
                       (!owned && (g.data?.stats.coins ?? 0) < i.price)
                     }
                     onPress={() =>
                       task.run(async () => {
-                        await api("cosmetics", "POST", {
-                          action: owned ? "equip" : "buy",
-                          itemId: i.id,
-                        });
-                        await refresh();
+                        setPendingId(i.id);
+                        try {
+                          await api("cosmetics", "POST", {
+                            action: owned ? "equip" : "buy",
+                            itemId: i.id,
+                          });
+                          await refresh();
+                          task.setNotice(
+                            owned
+                              ? `${i.name} equipped. Your hero is ready.`
+                              : `${i.name} added to your collection. Equip it when you like.`,
+                          );
+                        } finally {
+                          setPendingId(undefined);
+                        }
                       })
                     }
                   />

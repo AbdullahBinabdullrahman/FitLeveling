@@ -1,11 +1,5 @@
-import { useEffect, useState, useId } from "react";
-import {
-  Animated,
-  AccessibilityInfo,
-  View,
-  Pressable,
-  Text,
-} from "react-native";
+import { useEffect, useState, useId, useCallback } from "react";
+import { Animated, View, Pressable, Text } from "react-native";
 import Svg, {
   Circle,
   Path,
@@ -27,6 +21,8 @@ import {
   type HeroPose,
   type HeroJoint,
 } from "../lib/hero-rig";
+import { useExperience } from "./Experience";
+import { useFocusEffect } from "expo-router";
 import { cosmeticById } from "../lib/cosmetics";
 import type { Character as CharacterData } from "../lib/types";
 export default function Hero({
@@ -42,18 +38,18 @@ export default function Hero({
 }) {
   const id = useId().replace(/:/g, ""),
     [pulse] = useState(() => new Animated.Value(0)),
-    [reduce, setReduce] = useState(false),
     [powered, setPowered] = useState(false),
     [emote, setEmote] = useState("idle"),
     [dance] = useState(() => new Animated.Value(0));
-  useEffect(() => {
-    AccessibilityInfo.isReduceMotionEnabled().then(setReduce);
-    const sub = AccessibilityInfo.addEventListener(
-      "reduceMotionChanged",
-      setReduce,
-    );
-    return () => sub.remove();
-  }, []);
+  const { motion } = useExperience();
+  const [focused, setFocused] = useState(true);
+  useFocusEffect(
+    useCallback(() => {
+      setFocused(true);
+      return () => setFocused(false);
+    }, []),
+  );
+  const reduce = !motion || !focused;
   useEffect(() => {
     if (reduce || !character.animations) {
       pulse.setValue(0);
@@ -226,7 +222,6 @@ export default function Hero({
       width={size}
       height={(size * 340) / 320}
       viewBox="0 0 320 340"
-
       accessibilityLabel={`${character.name}, your level ${level} ${character.archetype} companion`}
     >
       <Defs>
