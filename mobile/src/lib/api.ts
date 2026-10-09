@@ -19,7 +19,7 @@ export async function api<T>(
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
-    signal: AbortSignal.timeout(path.startsWith("coach") ? 65000 : 20000),
+    signal: AbortSignal.timeout(path.startsWith("coach") ? 125000 : 20000),
   });
   const data = await response.json().catch(() => ({
     error: "The server returned an unreadable response. Try again.",

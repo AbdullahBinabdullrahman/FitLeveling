@@ -35,24 +35,48 @@ export const coachProposalSchema = z.discriminatedUnion("type", [
   }),
 ]);
 export type CoachProposal = z.infer<typeof coachProposalSchema>;
+export class CoachResponseError extends Error {
+  constructor(public readonly issues: { path: string; code: string }[]) {
+    super("The coach could not format its response. Please try again.");
+  }
+}
 export function parseCoachResponse(raw: string) {
   const text = raw
     .trim()
     .replace(/^```(?:json)?\s*/, "")
     .replace(/\s*```$/, "");
-  if (!text.startsWith("{")) return { reply: raw, proposal: null };
+  if (!text) throw new CoachResponseError([{ path: "reply", code: "empty" }]);
+  if (!text.startsWith("{") && !text.startsWith("["))
+    return { reply: text, proposal: null, issues: [] };
+  let value: unknown;
   try {
-    return z
-      .object({
-        reply: z.string().trim().min(1).max(6000),
-        proposal: coachProposalSchema.nullable().default(null),
-      })
-      .parse(JSON.parse(text));
+    value = JSON.parse(text);
   } catch {
-    throw Error(
-      "The coach’s proposal was incomplete. Nothing was saved. Ask again with a smaller change.",
-    );
+    throw new CoachResponseError([{ path: "response", code: "invalid_json" }]);
   }
+  const envelope = z
+    .object({
+      reply: z.string().trim().min(1).max(6000),
+      proposal: z.unknown().optional(),
+    })
+    .safeParse(value);
+  const summarize = (issues: z.core.$ZodIssue[]) =>
+    issues.map((i) => ({
+      path: i.path.join("."),
+      code: i.code,
+    }));
+  if (!envelope.success)
+    throw new CoachResponseError(summarize(envelope.error.issues));
+  if (envelope.data.proposal == null)
+    return { reply: envelope.data.reply, proposal: null, issues: [] };
+  const proposal = coachProposalSchema.safeParse(envelope.data.proposal);
+  if (!proposal.success)
+    return {
+      reply: envelope.data.reply,
+      proposal: null,
+      issues: summarize(proposal.error.issues),
+    };
+  return { reply: envelope.data.reply, proposal: proposal.data, issues: [] };
 }
 export function assertFresh(status: string, createdAt: Date, now = new Date()) {
   if (status !== "pending")

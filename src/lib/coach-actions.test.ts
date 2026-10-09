@@ -16,11 +16,11 @@ describe("Coach suggestions", () => {
     ).toBe("Tell me more");
   });
   it("rejects unsupported mutation tools", () => {
-    expect(() =>
-      parseCoachResponse(
-        '{"reply":"done","proposal":{"type":"coins","amount":10000}}',
-      ),
-    ).toThrow("Nothing was saved");
+    const parsed = parseCoachResponse(
+      '{"reply":"done","proposal":{"type":"coins","amount":10000}}',
+    );
+    expect(parsed.proposal).toBeNull();
+    expect(parsed.issues.length).toBeGreaterThan(0);
   });
   it("validates training, including rep bounds and duplicates", () => {
     const e = {
