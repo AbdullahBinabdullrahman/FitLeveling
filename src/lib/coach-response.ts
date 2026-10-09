@@ -26,11 +26,11 @@ export async function recoverCoachResponse(
       report(attempt + 1, error.issues);
     }
   }
-  const notice = /[\u0600-\u06ff]/.test(message)
-    ? "لم أتمكن من تجهيز تعديل صالح للتطبيق. لم تتغير بياناتك؛ يمكننا مناقشة الخيارات أو طلب تعديل محدد."
-    : "I couldn't prepare a valid change to apply. Your saved data is unchanged; we can discuss options or try a specific change.";
+  const notice = /[\u0600-\u06ff]/.test(fallback?.reply ?? message)
+    ? "لم أتمكن من تجهيز تعديل صالح، لذلك لا يوجد زر تطبيق لهذا الرد. لم تتغير بياناتك؛ يمكننا مناقشة الخيارات أو طلب تعديل محدد."
+    : "I couldn't prepare a valid change, so there is no Apply button for this reply. Your saved data is unchanged; we can discuss options or try a specific change.";
   return {
-    reply: fallback ? `${fallback.reply}\n\n${notice}` : notice,
+    reply: fallback ? `${notice}\n\n${fallback.reply}` : notice,
     proposal: null,
   };
 }

@@ -137,7 +137,7 @@ export async function POST(r: NextRequest) {
               instructions:
                 requestBody.instructions +
                 (repair
-                  ? " Your previous response failed validation. Return complete valid JSON. Use proposal:null when discussing options or when a complete valid action cannot be produced. For timed exercises, describe duration in the reply; do not put seconds into rep fields."
+                  ? " Your previous response failed validation. For this retry return complete JSON with proposal:null and a conversational reply only. Discuss suitable options and ask a clarifying question. Do not describe a generated plan, claim a change was saved, or mention an Apply button."
                   : ""),
             },
           );
