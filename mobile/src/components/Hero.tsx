@@ -1,5 +1,11 @@
 import { useEffect, useState, useId } from "react";
-import { Animated, AccessibilityInfo, View, Pressable } from "react-native";
+import {
+  Animated,
+  AccessibilityInfo,
+  View,
+  Pressable,
+  Text,
+} from "react-native";
 import Svg, {
   Circle,
   Path,
@@ -17,15 +23,19 @@ export default function Hero({
   character,
   size = 220,
   level = 1,
+  showEmotes = false,
 }: {
   character: CharacterData;
   size?: number;
   level?: number;
+  showEmotes?: boolean;
 }) {
   const id = useId().replace(/:/g, ""),
     [pulse] = useState(() => new Animated.Value(0)),
     [reduce, setReduce] = useState(false),
-    [powered, setPowered] = useState(false);
+    [powered, setPowered] = useState(false),
+    [emote, setEmote] = useState("idle"),
+    [dance] = useState(() => new Animated.Value(0));
   useEffect(() => {
     AccessibilityInfo.isReduceMotionEnabled().then(setReduce);
     const sub = AccessibilityInfo.addEventListener(
@@ -56,6 +66,32 @@ export default function Hero({
     a.start();
     return () => a.stop();
   }, [reduce, character.animations, pulse]);
+  useEffect(() => {
+    dance.setValue(0);
+    if (reduce || !character.animations || emote === "idle") return;
+    const speed = emote === "robot" ? 220 : 400;
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(dance, {
+          toValue: 1,
+          duration: speed,
+          useNativeDriver: true,
+        }),
+        Animated.timing(dance, {
+          toValue: -1,
+          duration: speed * 2,
+          useNativeDriver: true,
+        }),
+        Animated.timing(dance, {
+          toValue: 0,
+          duration: speed,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    animation.start();
+    return () => animation.stop();
+  }, [dance, emote, reduce, character.animations]);
   const color =
     (
       {
@@ -150,35 +186,6 @@ export default function Hero({
                 d="M62 78L160 30L250 92M45 232L62 78M250 92L262 268"
                 opacity=".3"
               />
-            </>
-          )}
-        </G>
-      )}
-      {vfx && (
-        <G fill="none" stroke={vfx.colors[1]} strokeWidth="2">
-          {vfx.id === "ionpulse" ? (
-            <>
-              <Ellipse cx="160" cy="176" rx="135" ry="141" />
-              <Ellipse cx="160" cy="176" rx="119" ry="126" />
-            </>
-          ) : (
-            <>
-              {[
-                [60, 240],
-                [265, 225],
-                [77, 125],
-                [244, 97],
-                [46, 170],
-                [270, 160],
-              ].map(([x, y], i) => (
-                <Circle
-                  key={x}
-                  cx={x}
-                  cy={y}
-                  r={i % 2 ? 3 : 5}
-                  fill={vfx.colors[i % 3]}
-                />
-              ))}
             </>
           )}
         </G>
@@ -407,6 +414,17 @@ export default function Hero({
             />
           )}
         </G>
+        {trinket?.id === "beatphones" && (
+          <G
+            fill={trinket.colors[2]}
+            stroke={trinket.colors[1]}
+            strokeWidth="4"
+          >
+            <Path d="M108 130C105 68 215 68 212 130" fill="none" />
+            <Rect x="98" y="113" width="17" height="34" rx="7" />
+            <Rect x="205" y="113" width="17" height="34" rx="7" />
+          </G>
+        )}
         {weapon && (
           <G stroke={weapon.colors[1]} strokeWidth="2" strokeLinejoin="round">
             {weapon.id === "ionblade" ? (
@@ -417,6 +435,63 @@ export default function Hero({
                 />
                 <Path d="M224 221l27 6M236 224l-5 19" strokeWidth="6" />
                 <Path d="M252 141l-16 76" stroke="#fff" opacity=".8" />
+              </>
+            ) : weapon.id === "voidreaper" ? (
+              <>
+                <Path d="M238 260l10-123" strokeWidth="7" />
+                <Path
+                  d="M248 138C211 87 280 73 294 129C270 110 249 115 248 138Z"
+                  fill={weapon.colors[2]}
+                />
+                <Path
+                  d="M248 138C232 100 276 91 294 129"
+                  fill="none"
+                  stroke={weapon.colors[0]}
+                  strokeWidth="4"
+                />
+              </>
+            ) : weapon.id === "frostbow" ? (
+              <>
+                <Path
+                  d="M236 124Q302 180 236 248Q272 180 236 124Z"
+                  fill={weapon.colors[2]}
+                />
+                <Path
+                  d="M236 124L252 182L236 248M226 182h60l-8-7m8 7-8 7"
+                  fill="none"
+                  stroke={weapon.colors[0]}
+                />
+                <Circle cx="252" cy="182" r="5" fill={weapon.colors[1]} />
+              </>
+            ) : weapon.id === "stormlance" ? (
+              <>
+                <Path d="M237 260L252 143" strokeWidth="6" />
+                <Path
+                  d="M252 102l-17 49 17-11 13 12Z"
+                  fill={weapon.colors[0]}
+                />
+                <Path
+                  d="M249 145l12 18-18 9 14 16-18 13"
+                  fill="none"
+                  strokeWidth="3"
+                />
+              </>
+            ) : weapon.id === "novagauntlet" ? (
+              <>
+                <Rect
+                  x="216"
+                  y="190"
+                  width="54"
+                  height="43"
+                  rx="12"
+                  fill={weapon.colors[2]}
+                />
+                <Path
+                  d="M223 199h38M224 213h7m8 0h7m8 0h7"
+                  stroke={weapon.colors[0]}
+                  strokeWidth="4"
+                />
+                <Circle cx="241" cy="224" r="9" fill={weapon.colors[1]} />
               </>
             ) : weapon.id === "sunhammer" ? (
               <>
@@ -442,6 +517,82 @@ export default function Hero({
       </G>
     </Svg>
   );
+  const effect = vfx ? (
+    <Svg width={size} height={(size * 340) / 320} viewBox="0 0 320 340">
+      {" "}
+      {vfx && (
+        <G fill="none" stroke={vfx.colors[1]} strokeWidth="2">
+          {vfx.id === "ionpulse" ? (
+            <>
+              <Ellipse cx="160" cy="176" rx="135" ry="141" />
+              <Ellipse cx="160" cy="176" rx="119" ry="126" />
+            </>
+          ) : vfx.id === "stormstrike" ? (
+            <G>
+              <Path d="M67 78l-17 42h23l-28 55M266 133l-21 37h25l-19 56M117 34l-9 22h15l-9 24" />
+              <Circle cx="62" cy="103" r="27" strokeOpacity=".2" />
+            </G>
+          ) : vfx.id === "galaxyspiral" ? (
+            <G>
+              <Ellipse
+                cx="160"
+                cy="177"
+                rx="138"
+                ry="85"
+                transform="rotate(-30 160 177)"
+                strokeDasharray="55 20 8 20"
+              />
+              <Ellipse
+                cx="160"
+                cy="177"
+                rx="132"
+                ry="82"
+                transform="rotate(30 160 177)"
+                strokeOpacity=".35"
+              />
+              <Circle cx="46" cy="156" r="7" fill={vfx.colors[0]} />
+              <Circle cx="274" cy="199" r="5" fill={vfx.colors[2]} />
+            </G>
+          ) : vfx.id === "frostfall" ? (
+            <G>
+              {[
+                [55, 88],
+                [262, 113],
+                [72, 205],
+                [250, 254],
+                [110, 41],
+                [204, 56],
+              ].map(([x, y]) => (
+                <Path
+                  key={x}
+                  d={`M${x - 6} ${y}h12M${x} ${y - 6}v12M${x - 4} ${y - 4}l8 8M${x - 4} ${y + 4}l8-8`}
+                />
+              ))}
+            </G>
+          ) : (
+            <>
+              {[
+                [60, 240],
+                [265, 225],
+                [77, 125],
+                [244, 97],
+                [46, 170],
+                [270, 160],
+              ].map(([x, y], i) => (
+                <Circle
+                  key={x}
+                  cx={x}
+                  cy={y}
+                  r={i % 2 ? 3 : 5}
+                  fill={vfx.colors[i % 3]}
+                />
+              ))}
+            </>
+          )}
+        </G>
+      )}
+    </Svg>
+  ) : null;
   return (
     <View style={{ alignItems: "center" }}>
       <Pressable
@@ -453,18 +604,103 @@ export default function Hero({
           style={{
             transform: [
               {
-                translateY: pulse.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0, -7],
+                translateY:
+                  emote === "victory" && !reduce && character.animations
+                    ? dance.interpolate({
+                        inputRange: [-1, 0, 1],
+                        outputRange: [0, -18, 0],
+                      })
+                    : pulse.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [0, -7],
+                      }),
+              },
+              {
+                translateX: dance.interpolate({
+                  inputRange: [-1, 0, 1],
+                  outputRange: emote === "shuffle" ? [-12, 0, 12] : [-3, 0, 3],
                 }),
               },
-              { scale: powered && !reduce ? 1.04 : 1 },
+              {
+                rotate: dance.interpolate({
+                  inputRange: [-1, 0, 1],
+                  outputRange:
+                    emote === "robot"
+                      ? ["-14deg", "0deg", "14deg"]
+                      : ["-8deg", "0deg", "8deg"],
+                }),
+              },
+              { scale: powered && !reduce && character.animations ? 1.04 : 1 },
             ],
           }}
         >
           {art}
+          <Animated.View
+            pointerEvents="none"
+            style={{
+              position: "absolute",
+              inset: 0,
+              opacity:
+                reduce || !character.animations
+                  ? 1
+                  : pulse.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.4, 1],
+                    }),
+              transform: [
+                {
+                  translateY:
+                    reduce || !character.animations
+                      ? 0
+                      : pulse.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [-5, 8],
+                        }),
+                },
+              ],
+            }}
+          >
+            {effect}
+          </Animated.View>
         </Animated.View>
       </Pressable>
+      {showEmotes && (
+        <View
+          style={{
+            flexDirection: "row",
+            flexWrap: "wrap",
+            justifyContent: "center",
+            gap: 8,
+            marginVertical: 12,
+          }}
+        >
+          {[
+            ["shuffle", "Shuffle"],
+            ["robot", "Robot dance"],
+            ["victory", "Victory dance"],
+            ["idle", "Stop"],
+          ].map(([value, label]) => (
+            <Pressable
+              key={value}
+              accessibilityRole="button"
+              accessibilityState={{
+                selected: emote === value,
+                disabled: reduce || !character.animations,
+              }}
+              disabled={reduce || !character.animations}
+              onPress={() => setEmote(value)}
+              style={{
+                padding: 10,
+                borderRadius: 12,
+                backgroundColor: emote === value ? "#48406b" : "#20273d",
+                opacity: reduce || !character.animations ? 0.5 : 1,
+              }}
+            >
+              <Text style={{ color: "#f3efff", fontSize: 12 }}>{label}</Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
     </View>
   );
 }

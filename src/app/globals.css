@@ -2452,3 +2452,108 @@ input[type="checkbox"] {
     flex-wrap: wrap;
   }
 }
+
+/* Companion dance emotes and collection effects. */
+.hero-actions {
+  flex-wrap: wrap;
+}
+.hero-art.mood-shuffle .hero-body {
+  animation: hero-shuffle 0.8s ease-in-out infinite;
+}
+.hero-art.mood-robot .hero-body {
+  animation: hero-robot 1.2s steps(2, end) infinite;
+}
+.hero-art.mood-victory .hero-body {
+  animation: hero-victory 1s ease-in-out infinite;
+}
+.hero-art.mood-shuffle .hero-arm-left,
+.hero-art.mood-victory .hero-arm-left {
+  transform-origin: 116px 170px;
+  animation: hero-dance-arm 0.4s ease-in-out infinite alternate;
+}
+.hero-art.mood-shuffle .hero-arm-right,
+.hero-art.mood-robot .hero-arm-right {
+  transform-origin: 204px 170px;
+  animation: hero-dance-arm 0.4s ease-in-out infinite alternate-reverse;
+}
+.vfx-animated .vfx-lightning {
+  animation: hero-lightning 1.8s ease-in-out infinite;
+  filter: drop-shadow(0 0 5px #9dabff);
+}
+.vfx-animated .vfx-galaxy {
+  transform-origin: 160px 177px;
+  animation: orbit 12s linear infinite;
+}
+.vfx-animated .vfx-snow path {
+  animation: hero-snow 3s ease-in-out infinite;
+}
+@keyframes hero-shuffle {
+  0%,
+  100% {
+    transform: translateX(-9px) rotate(-6deg);
+  }
+  50% {
+    transform: translateX(9px) translateY(-7px) rotate(6deg);
+  }
+}
+@keyframes hero-robot {
+  0%,
+  100% {
+    transform: rotate(-8deg);
+  }
+  25% {
+    transform: translateX(6px) rotate(8deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(8deg);
+  }
+  75% {
+    transform: translateX(-6px) rotate(-8deg);
+  }
+}
+@keyframes hero-victory {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-8deg);
+  }
+  50% {
+    transform: translateY(-18px) rotate(8deg);
+  }
+}
+@keyframes hero-dance-arm {
+  from {
+    transform: rotate(-35deg);
+  }
+  to {
+    transform: rotate(65deg);
+  }
+}
+@keyframes hero-lightning {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  45%,
+  65% {
+    opacity: 1;
+  }
+}
+@keyframes hero-snow {
+  0% {
+    transform: translateY(-10px);
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(16px);
+    opacity: 0.3;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-art *,
+  .vfx-animated * {
+    animation: none !important;
+  }
+}

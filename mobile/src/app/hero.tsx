@@ -32,6 +32,7 @@ export default function HeroScreen() {
           <Hero
             character={q.data.character}
             size={280}
+            showEmotes
             level={q.data.stats.level}
           />
           <Heading>

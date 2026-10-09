@@ -3,7 +3,8 @@ import { useId, useState, type CSSProperties } from "react";
 import { cosmeticById } from "@/lib/community";
 import { COLORS, type Character as CharacterData } from "@/lib/game";
 
-type Mood = "idle" | "wave" | "power" | "celebrate";
+type Mood =
+  "idle" | "wave" | "power" | "celebrate" | "shuffle" | "robot" | "victory";
 export default function Character({
   character,
   level = 1,
@@ -149,6 +150,49 @@ export default function Character({
                 ry="126"
               />
             </>
+          ) : vfx.id === "stormstrike" ? (
+            <g className="vfx-lightning">
+              <path d="M67 78l-17 42h23l-28 55M266 133l-21 37h25l-19 56M117 34l-9 22h15l-9 24" />
+              <circle cx="62" cy="103" r="27" strokeOpacity=".2" />
+            </g>
+          ) : vfx.id === "galaxyspiral" ? (
+            <g className="vfx-galaxy">
+              <ellipse
+                cx="160"
+                cy="177"
+                rx="138"
+                ry="85"
+                transform="rotate(-30 160 177)"
+                strokeDasharray="55 20 8 20"
+              />
+              <ellipse
+                cx="160"
+                cy="177"
+                rx="132"
+                ry="82"
+                transform="rotate(30 160 177)"
+                strokeOpacity=".35"
+              />
+              <circle cx="46" cy="156" r="7" fill={vfx.colors[0]} />
+              <circle cx="274" cy="199" r="5" fill={vfx.colors[2]} />
+            </g>
+          ) : vfx.id === "frostfall" ? (
+            <g className="vfx-snow">
+              {[
+                [55, 88],
+                [262, 113],
+                [72, 205],
+                [250, 254],
+                [110, 41],
+                [204, 56],
+              ].map(([x, y], i) => (
+                <path
+                  key={x}
+                  d={`M${x - 6} ${y}h12M${x} ${y - 6}v12M${x - 4} ${y - 4}l8 8M${x - 4} ${y + 4}l8-8`}
+                  style={{ animationDelay: `${i * 0.25}s` }}
+                />
+              ))}
+            </g>
           ) : (
             <>
               {[
@@ -398,6 +442,17 @@ export default function Character({
             />
           )}
         </g>
+        {trinket?.id === "beatphones" && (
+          <g
+            fill={trinket.colors[2]}
+            stroke={trinket.colors[1]}
+            strokeWidth="4"
+          >
+            <path d="M108 130C105 68 215 68 212 130" fill="none" />
+            <rect x="98" y="113" width="17" height="34" rx="7" />
+            <rect x="205" y="113" width="17" height="34" rx="7" />
+          </g>
+        )}
         {weapon && (
           <g
             className="hero-weapon"
@@ -413,6 +468,63 @@ export default function Character({
                 />
                 <path d="M224 221l27 6M236 224l-5 19" strokeWidth="6" />
                 <path d="M252 141l-16 76" stroke="#fff" opacity=".8" />
+              </>
+            ) : weapon.id === "voidreaper" ? (
+              <>
+                <path d="M238 260l10-123" strokeWidth="7" />
+                <path
+                  d="M248 138C211 87 280 73 294 129C270 110 249 115 248 138Z"
+                  fill={weapon.colors[2]}
+                />
+                <path
+                  d="M248 138C232 100 276 91 294 129"
+                  fill="none"
+                  stroke={weapon.colors[0]}
+                  strokeWidth="4"
+                />
+              </>
+            ) : weapon.id === "frostbow" ? (
+              <>
+                <path
+                  d="M236 124Q302 180 236 248Q272 180 236 124Z"
+                  fill={weapon.colors[2]}
+                />
+                <path
+                  d="M236 124L252 182L236 248M226 182h60l-8-7m8 7-8 7"
+                  fill="none"
+                  stroke={weapon.colors[0]}
+                />
+                <circle cx="252" cy="182" r="5" fill={weapon.colors[1]} />
+              </>
+            ) : weapon.id === "stormlance" ? (
+              <>
+                <path d="M237 260L252 143" strokeWidth="6" />
+                <path
+                  d="M252 102l-17 49 17-11 13 12Z"
+                  fill={weapon.colors[0]}
+                />
+                <path
+                  d="M249 145l12 18-18 9 14 16-18 13"
+                  fill="none"
+                  strokeWidth="3"
+                />
+              </>
+            ) : weapon.id === "novagauntlet" ? (
+              <>
+                <rect
+                  x="216"
+                  y="190"
+                  width="54"
+                  height="43"
+                  rx="12"
+                  fill={weapon.colors[2]}
+                />
+                <path
+                  d="M223 199h38M224 213h7m8 0h7m8 0h7"
+                  stroke={weapon.colors[0]}
+                  strokeWidth="4"
+                />
+                <circle cx="241" cy="224" r="9" fill={weapon.colors[1]} />
               </>
             ) : weapon.id === "sunhammer" ? (
               <>
@@ -480,6 +592,22 @@ export default function Character({
           >
             Celebrate
           </button>
+          {[
+            ["shuffle", "Shuffle"],
+            ["robot", "Robot dance"],
+            ["victory", "Victory dance"],
+            ["idle", "Stop"],
+          ].map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setMood(value as Mood)}
+              aria-pressed={mood === value}
+              disabled={!character.animations}
+            >
+              {label}
+            </button>
+          ))}
         </div>
       )}
     </div>
