@@ -86,6 +86,7 @@ function Navigation() {
         <Stack.Screen name="hero" options={{ title: "Your hero" }} />
         <Stack.Screen name="habits" options={{ title: "Habits" }} />
         <Stack.Screen name="progress" options={{ title: "Progress" }} />
+        <Stack.Screen name="training-studio" options={{ title: "Training studio" }} />
         <Stack.Screen
           name="fitness-profile"
           options={{ title: "Fitness profile" }}
