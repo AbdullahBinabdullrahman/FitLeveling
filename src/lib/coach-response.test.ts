@@ -19,12 +19,13 @@ describe("Coach response recovery", () => {
       report,
     );
     expect(result.proposal).toEqual({ type: "goal", goal: "lose" });
-    expect(request.mock.calls).toEqual([[false], [true]]);
+    expect(request.mock.calls[0]).toEqual([false, undefined]);
+    expect(request.mock.calls[1][1]).toMatchObject({ issues: [{ path: "response", code: "invalid_json" }] });
     expect(report).toHaveBeenCalledWith(1, [
       { path: "response", code: "invalid_json" },
     ]);
   });
-  it("retains discussion but blocks invalid plans after retry", async () => {
+  it("blocks invalid plans and misleading reply text after retry", async () => {
     const request = vi.fn().mockResolvedValue(bad);
     const report = vi.fn();
     const result = await recoverCoachResponse(
@@ -32,20 +33,27 @@ describe("Coach response recovery", () => {
       "I am bored with lifting",
       report,
     );
-    expect(result.reply).toContain("Try circuits instead.");
+    expect(result.reply).not.toContain("Try circuits instead.");
     expect(result.reply).toContain("saved data is unchanged");
     expect(result.proposal).toBeNull();
     expect(request).toHaveBeenCalledTimes(2);
     expect(JSON.stringify(report.mock.calls)).not.toContain("Try circuits");
   });
-  it("preserves a usable reply when the repair provider fails", async () => {
+  it("returns an honest failure when the repair provider fails", async () => {
     const request = vi
       .fn()
       .mockResolvedValueOnce(bad)
       .mockRejectedValueOnce(Error("offline"));
     expect(
       (await recoverCoachResponse(request, "hello", vi.fn())).reply,
-    ).toContain("Try circuits");
+    ).toContain("saved data is unchanged");
+  });
+  it("does not tell users to Apply when an invalid draft cannot be repaired", async () => {
+    const raw = JSON.stringify({ reply: "Your plan is ready. Click Apply to save it.", proposal: { type: "training", plan: { days: [] } } });
+    const result = await recoverCoachResponse(vi.fn().mockResolvedValue(raw), "adjust my training", vi.fn());
+    expect(result.proposal).toBeNull();
+    expect(result.reply).not.toContain("Click Apply");
+    expect(result.reply).not.toContain("Your plan is ready");
   });
   it("never exposes malformed JSON as a chat reply", async () => {
     const result = await recoverCoachResponse(
