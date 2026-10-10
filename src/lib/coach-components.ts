@@ -3,6 +3,26 @@ export const coachComponentsSchema = z
   .array(
     z.discriminatedUnion("type", [
       z.object({
+        type: z.literal("image"),
+        title: z.string().trim().min(1).max(120),
+        src: z
+          .string()
+          .max(2000)
+          .refine((value) => {
+            if (/^\/coach-media\/[a-z0-9-]+\.png$/.test(value)) return true;
+            try {
+              const url = new URL(value);
+              return (
+                url.protocol === "https:" && !url.username && !url.password
+              );
+            } catch {
+              return false;
+            }
+          }, "Use an HTTPS image or a coach library image"),
+        alt: z.string().trim().min(1).max(300),
+        caption: z.string().max(500).optional(),
+      }),
+      z.object({
         type: z.literal("exercise"),
         title: z.string().trim().min(1).max(120),
         steps: z.array(z.string().trim().min(1).max(300)).min(1).max(8),

@@ -1,3 +1,5 @@
+import { Image } from "react-native";
+import { API_URL } from "../lib/api";
 import { useEffect, useState } from "react";
 import type { CoachComponent } from "../lib/coach-components";
 import { Card, Heading, Body, Button } from "./ui";
@@ -72,6 +74,32 @@ function Checklist({
     </Card>
   );
 }
+function ImageCard({
+  card,
+}: {
+  card: Extract<CoachComponent, { type: "image" }>;
+}) {
+  const [failed, setFailed] = useState(false);
+  return (
+    <Card>
+      <Heading>{card.title}</Heading>
+      {failed ? (
+        <Body>Image unavailable · {card.alt}</Body>
+      ) : (
+        <Image
+          source={{
+            uri: card.src.startsWith("/") ? API_URL + card.src : card.src,
+          }}
+          accessibilityLabel={card.alt}
+          resizeMode="contain"
+          onError={() => setFailed(true)}
+          style={{ width: "100%", height: 230, borderRadius: 12 }}
+        />
+      )}{" "}
+      {card.caption && <Body muted>{card.caption}</Body>}
+    </Card>
+  );
+}
 export default function CoachComponents({
   cards,
 }: {
@@ -80,7 +108,9 @@ export default function CoachComponents({
   return (
     <>
       {cards?.map((card, i) =>
-        card.type === "timer" ? (
+        card.type === "image" ? (
+          <ImageCard key={card.src} card={card} />
+        ) : card.type === "timer" ? (
           <Timer key={i} card={card} />
         ) : card.type === "checklist" ? (
           <Checklist key={i} card={card} />

@@ -53,6 +53,36 @@ function Timer({ card }: { card: Extract<CoachComponent, { type: "timer" }> }) {
     </section>
   );
 }
+function ImageCard({
+  card,
+}: {
+  card: Extract<CoachComponent, { type: "image" }>;
+}) {
+  const [failed, setFailed] = useState(false);
+  return (
+    <figure className="card">
+      <h4>{card.title}</h4>
+      {failed ? (
+        <p role="status">Image unavailable · {card.alt}</p>
+      ) : (
+        <img
+          src={card.src}
+          alt={card.alt}
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          onError={() => setFailed(true)}
+          style={{
+            width: "100%",
+            maxHeight: 360,
+            objectFit: "contain",
+            borderRadius: 12,
+          }}
+        />
+      )}{" "}
+      {card.caption && <figcaption>{card.caption}</figcaption>}
+    </figure>
+  );
+}
 export default function CoachComponents({
   cards,
 }: {
@@ -61,7 +91,9 @@ export default function CoachComponents({
   return (
     <div className="grid gap-3">
       {cards?.map((card, i) =>
-        card.type === "timer" ? (
+        card.type === "image" ? (
+          <ImageCard key={card.src} card={card} />
+        ) : card.type === "timer" ? (
           <Timer key={i} card={card} />
         ) : (
           <section className="card" key={i}>

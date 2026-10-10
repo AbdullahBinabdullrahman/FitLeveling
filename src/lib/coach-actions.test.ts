@@ -168,3 +168,51 @@ describe("structured coach cards", () => {
     ).toThrow();
   });
 });
+
+describe("coach image cards", () => {
+  it("accepts library images and supplied HTTPS images", () => {
+    for (const src of [
+      "/coach-media/plank.png",
+      "https://example.com/exercise.png",
+    ]) {
+      const result = parseCoachResponse(
+        JSON.stringify({
+          reply: "Technique reference",
+          proposal: null,
+          components: [
+            {
+              type: "image",
+              title: "Plank",
+              src,
+              alt: "Plank alignment",
+              caption: "Keep a straight line",
+            },
+          ],
+        }),
+      );
+      expect("components" in result && result.components?.[0].type).toBe(
+        "image",
+      );
+    }
+  });
+  it("rejects script, data, insecure and credential-bearing image URLs", () => {
+    for (const src of [
+      "javascript:alert(1)",
+      "data:image/svg+xml,test",
+      "http://example.com/image.png",
+      "https://user:password@example.com/image.png",
+      "/api/account",
+    ]) {
+      expect(() =>
+        parseCoachResponse(
+          JSON.stringify({
+            reply: "Reference",
+            components: [
+              { type: "image", title: "Bad", src, alt: "Reference" },
+            ],
+          }),
+        ),
+      ).toThrow();
+    }
+  });
+});

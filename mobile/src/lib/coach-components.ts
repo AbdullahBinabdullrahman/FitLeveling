@@ -1,4 +1,5 @@
 export type CoachComponent =
+  | { type: "image"; title: string; src: string; alt: string; caption?: string }
   | { type: "exercise"; title: string; steps: string[]; cue?: string }
   | {
       type: "timer";
