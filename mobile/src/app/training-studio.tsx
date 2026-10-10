@@ -28,6 +28,7 @@ type Context = {
 const exercise = () => ({
   name: "",
   muscleGroup: "",
+  tracking: "reps" as const,
   sets: 3,
   repMin: 8,
   repMax: 12,
@@ -48,7 +49,7 @@ export default function TrainingStudio() {
     di: number,
     ei: number,
     key: string,
-    value: string | number,
+    value: string | number | null | undefined,
   ) {
     setDraft((old) =>
       old
@@ -194,17 +195,99 @@ export default function TrainingStudio() {
                     value={e.muscleGroup}
                     onChangeText={(v) => editExercise(di, ei, "muscleGroup", v)}
                   />
-                  {[
-                    ["sets", "Sets · 1–6"],
-                    ["repMin", "Minimum reps · 1–30"],
-                    ["repMax", "Maximum reps · 1–30"],
-                  ].map(([key, label]) => (
+                  <Row>
+                    {(
+                      ["reps", "duration", "distance", "intervals"] as const
+                    ).map((tracking) => (
+                      <Button
+                        key={tracking}
+                        title={tracking}
+                        secondary={e.tracking !== tracking}
+                        onPress={() =>
+                          setDraft(
+                            (p) =>
+                              p && {
+                                ...p,
+                                days: p.days.map((day, i) =>
+                                  i !== di
+                                    ? day
+                                    : {
+                                        ...day,
+                                        exercises: day.exercises.map((ex, j) =>
+                                          j !== ei
+                                            ? ex
+                                            : {
+                                                ...ex,
+                                                tracking,
+                                                repMin:
+                                                  tracking === "reps"
+                                                    ? 8
+                                                    : null,
+                                                repMax:
+                                                  tracking === "reps"
+                                                    ? 12
+                                                    : null,
+                                                durationSeconds:
+                                                  tracking === "duration" ||
+                                                  tracking === "intervals"
+                                                    ? 60
+                                                    : undefined,
+                                                distanceMeters:
+                                                  tracking === "distance"
+                                                    ? 1000
+                                                    : undefined,
+                                                restSeconds:
+                                                  tracking === "intervals"
+                                                    ? 30
+                                                    : undefined,
+                                              },
+                                        ),
+                                      },
+                                ),
+                              },
+                          )
+                        }
+                      />
+                    ))}
+                  </Row>
+                  {(e.tracking && e.tracking !== "reps"
+                    ? [
+                        "sets",
+                        ...(e.tracking === "distance"
+                          ? ["distanceMeters"]
+                          : ["durationSeconds"]),
+                        ...(e.tracking === "intervals" ? ["restSeconds"] : []),
+                        "speedKph",
+                        "inclinePercent",
+                      ]
+                    : ["sets", "repMin", "repMax"]
+                  ).map((key) => (
                     <Field
                       key={key}
-                      label={label}
-                      keyboardType="number-pad"
-                      value={String(e[key as "sets" | "repMin" | "repMax"])}
-                      onChangeText={(v) => editExercise(di, ei, key, Number(v))}
+                      label={
+                        (
+                          {
+                            sets: "Sets / blocks / rounds",
+                            repMin: "Minimum reps",
+                            repMax: "Maximum reps",
+                            durationSeconds: "Duration (seconds)",
+                            distanceMeters: "Distance (meters)",
+                            speedKph: "Speed (km/h)",
+                            inclinePercent: "Incline (%)",
+                            restSeconds: "Rest (seconds)",
+                          } as Record<string, string>
+                        )[key]
+                      }
+                      keyboardType="decimal-pad"
+                      value={String(e[key as keyof typeof e] ?? "")}
+                      onChangeText={(v) =>
+                        editExercise(
+                          di,
+                          ei,
+                          key,
+                          v === "" ? undefined : Number(v),
+                        )
+                      }
                     />
                   ))}
                   <Button
@@ -289,13 +372,18 @@ export default function TrainingStudio() {
                           !e.name.trim() ||
                           !Number.isInteger(e.sets) ||
                           e.sets < 1 ||
-                          e.sets > 6 ||
-                          !Number.isInteger(e.repMin) ||
-                          e.repMin < 1 ||
-                          e.repMin > 30 ||
-                          !Number.isInteger(e.repMax) ||
-                          e.repMax < e.repMin ||
-                          e.repMax > 30,
+                          e.sets > 20 ||
+                          ((!e.tracking || e.tracking === "reps") &&
+                            (!Number.isInteger(e.repMin) ||
+                              (e.repMin ?? 0) < 1 ||
+                              (e.repMin ?? 0) > 100 ||
+                              !Number.isInteger(e.repMax) ||
+                              (e.repMax ?? 0) < (e.repMin ?? 0) ||
+                              (e.repMax ?? 0) > 100)) ||
+                          (e.tracking === "distance" && !e.distanceMeters) ||
+                          ((e.tracking === "duration" ||
+                            e.tracking === "intervals") &&
+                            !e.durationSeconds),
                       ),
                   )
                 )

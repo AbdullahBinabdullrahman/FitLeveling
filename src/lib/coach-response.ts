@@ -2,11 +2,16 @@ import { CoachResponseError, parseCoachResponse } from "./coach-actions";
 
 // Retry formatting once. Invalid proposals never reach the Apply workflow.
 export async function recoverCoachResponse(
-  request: (repair: boolean, failure?: { raw: string; issues: { path: string; code: string }[] }) => Promise<string>,
+  request: (
+    repair: boolean,
+    failure?: { raw: string; issues: { path: string; code: string }[] },
+  ) => Promise<string>,
   message: string,
   report: (attempt: number, issues: { path: string; code: string }[]) => void,
 ) {
-  let failure: { raw: string; issues: { path: string; code: string }[] } | undefined;
+  let failure:
+    | { raw: string; issues: { path: string; code: string }[] }
+    | undefined;
   for (let attempt = 0; attempt < 2; attempt++) {
     let raw: string;
     try {
@@ -18,7 +23,11 @@ export async function recoverCoachResponse(
     try {
       const parsed = parseCoachResponse(raw);
       if (!parsed.issues.length)
-        return { reply: parsed.reply, proposal: parsed.proposal };
+        return {
+          reply: parsed.reply,
+          proposal: parsed.proposal,
+          ...("components" in parsed ? { components: parsed.components } : {}),
+        };
       failure = { raw, issues: parsed.issues };
       report(attempt + 1, parsed.issues);
     } catch (error) {

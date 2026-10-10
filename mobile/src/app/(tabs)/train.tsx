@@ -1,3 +1,8 @@
+import {
+  exerciseSummary,
+  type Targets,
+  type Tracking,
+} from "../../lib/training-metrics";
 import { router } from "expo-router";
 import { useState } from "react";
 import { useApi, useRefresh } from "../../lib/query";
@@ -18,47 +23,104 @@ function LogSet({
   setNumber,
   sessionId,
   saved,
+  tracking = "reps",
+  targets,
   onSaved,
 }: {
   exerciseId: string;
   setNumber: number;
   sessionId: string;
-  saved?: { weightKg: string; reps: number };
+  tracking?: Tracking;
+  targets?: Targets;
+  saved?: { weightKg: string | null; reps: number | null; metrics?: Targets };
   onSaved: () => Promise<void>;
 }) {
   const [weight, setWeight] = useState(saved?.weightKg ?? ""),
     [reps, setReps] = useState(String(saved?.reps ?? "")),
     t = useTask();
+  const [metrics, setMetrics] = useState<Targets>(
+    saved?.metrics ?? targets ?? {},
+  );
   return (
     <Card>
       <Body>
         Set {setNumber}
         {saved ? " · Saved" : ""}
       </Body>
-      <Field
-        label="Weight (kg) · use 0 for bodyweight"
-        keyboardType="decimal-pad"
-        value={weight}
-        onChangeText={setWeight}
-      />
-      <Field
-        label="Reps"
-        keyboardType="number-pad"
-        value={reps}
-        onChangeText={setReps}
-      />
+      {tracking === "reps" ? (
+        <>
+          <Field
+            label="Weight (kg) · use 0 for bodyweight"
+            keyboardType="decimal-pad"
+            value={weight}
+            onChangeText={setWeight}
+          />
+          <Field
+            label="Reps"
+            keyboardType="number-pad"
+            value={reps}
+            onChangeText={setReps}
+          />
+        </>
+      ) : (
+        (tracking === "distance"
+          ? ["distanceMeters", "durationSeconds", "speedKph", "inclinePercent"]
+          : tracking === "intervals"
+            ? ["durationSeconds", "restSeconds"]
+            : [
+                "durationSeconds",
+                "distanceMeters",
+                "speedKph",
+                "inclinePercent",
+              ]
+        ).map((key) => (
+          <Field
+            key={key}
+            label={
+              (
+                {
+                  durationSeconds: "Duration (seconds)",
+                  distanceMeters: "Distance (meters)",
+                  speedKph: "Speed (km/h)",
+                  inclinePercent: "Incline (%)",
+                  restSeconds: "Rest (seconds)",
+                } as Record<string, string>
+              )[key]
+            }
+            keyboardType="decimal-pad"
+            value={String(metrics[key as keyof Targets] ?? "")}
+            onChangeText={(value) =>
+              setMetrics({
+                ...metrics,
+                [key]: value === "" ? undefined : Number(value),
+              })
+            }
+          />
+        ))
+      )}
       <Status error={t.error} />
       <Button
         title={t.busy ? "Saving…" : saved ? "Update set" : "Save set"}
-        disabled={t.busy || !weight || !reps}
+        disabled={
+          t.busy ||
+          (tracking === "reps"
+            ? !reps
+            : tracking === "distance"
+              ? !metrics.distanceMeters
+              : !metrics.durationSeconds)
+        }
         onPress={() =>
           t.run(async () => {
             await api("workouts", "PATCH", {
               sessionId,
               exerciseId,
               setNumber,
-              weightKg: Number(weight),
-              reps: Number(reps),
+              ...(tracking === "reps"
+                ? {
+                    ...(weight ? { weightKg: Number(weight) } : {}),
+                    reps: Number(reps),
+                  }
+                : { metrics }),
             });
             await onSaved();
           })
@@ -107,9 +169,7 @@ export default function Train() {
             .map((e) => (
               <Card key={e.exerciseId}>
                 <Heading>{e.exerciseName}</Heading>
-                <Body muted>
-                  {e.sets} sets × {e.repMin}–{e.repMax} reps
-                </Body>
+                <Body muted>{exerciseSummary({ ...e, ...e.targets })}</Body>
               </Card>
             ))}
           <Button
@@ -137,7 +197,16 @@ export default function Train() {
             <Body>{d?.activeSets.length ?? 0} sets saved</Body>
             <Button
               title={task.busy ? "Finishing…" : "Finish workout"}
-              disabled={task.busy || (d?.activeSets.length ?? 0) < 3}
+              disabled={
+                task.busy ||
+                (d?.activeSets.length ?? 0) <
+                  Math.min(
+                    3,
+                    d?.plan
+                      .filter((e) => e.templateId === id)
+                      .reduce((n, e) => n + e.sets, 0) ?? 3,
+                  )
+              }
               onPress={() =>
                 task.run(async () => {
                   const r = await api<{
@@ -158,24 +227,25 @@ export default function Train() {
             .map((e) => (
               <Card key={e.exerciseId}>
                 <Heading>{e.exerciseName}</Heading>
-                <Body muted>
-                  {e.sets} sets × {e.repMin}–{e.repMax} reps
-                </Body>
-                {d.past?.find((s) => s.exerciseId === e.exerciseId) && (
-                  <Body muted>
-                    Last session:{" "}
-                    {
-                      d.past.find((s) => s.exerciseId === e.exerciseId)!
-                        .weightKg
-                    }{" "}
-                    kg ×{" "}
-                    {d.past.find((s) => s.exerciseId === e.exerciseId)!.reps}{" "}
-                    reps
-                  </Body>
-                )}
+                <Body muted>{exerciseSummary({ ...e, ...e.targets })}</Body>
+                {(!e.tracking || e.tracking === "reps") &&
+                  d.past?.find((s) => s.exerciseId === e.exerciseId) && (
+                    <Body muted>
+                      Last session:{" "}
+                      {
+                        d.past.find((s) => s.exerciseId === e.exerciseId)!
+                          .weightKg
+                      }{" "}
+                      kg ×{" "}
+                      {d.past.find((s) => s.exerciseId === e.exerciseId)!.reps}{" "}
+                      reps
+                    </Body>
+                  )}
                 {Array.from({ length: e.sets }, (_, i) => (
                   <LogSet
                     key={`${active.id}:${e.exerciseId}:${i}`}
+                    tracking={e.tracking}
+                    targets={e.targets}
                     exerciseId={e.exerciseId}
                     sessionId={active.id}
                     setNumber={i + 1}

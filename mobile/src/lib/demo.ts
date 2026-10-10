@@ -358,8 +358,10 @@ export async function demoApi(
                   name: e.exerciseName,
                   muscleGroup: "General",
                   sets: e.sets,
-                  repMin: e.repMin,
-                  repMax: e.repMax,
+                  repMin: e.repMin ?? null,
+                  repMax: e.repMax ?? null,
+                  tracking: e.tracking ?? "reps",
+                  ...e.targets,
                 })),
             })),
           },
@@ -514,8 +516,16 @@ export async function demoApi(
             exerciseId: `demo-exercise-${di}-${ei}`,
             exerciseName: e.name,
             sets: e.sets,
-            repMin: e.repMin,
-            repMax: e.repMax,
+            repMin: e.repMin ?? null,
+            repMax: e.repMax ?? null,
+            tracking: e.tracking ?? "reps",
+            targets: {
+              durationSeconds: e.durationSeconds,
+              distanceMeters: e.distanceMeters,
+              restSeconds: e.restSeconds,
+              speedKph: e.speedKph,
+              inclinePercent: e.inclinePercent,
+            },
           })),
         );
       }
@@ -532,13 +542,22 @@ export async function demoApi(
         const set = {
           exerciseId: v.exerciseId,
           setNumber: v.setNumber,
-          reps: v.reps,
-          weightKg: String(v.weightKg),
+          reps: v.reps ?? null,
+          weightKg: v.weightKg == null ? null : String(v.weightKg),
+          metrics: v.metrics ?? {},
         };
         if (existing) Object.assign(existing, set);
         else state.workout.activeSets.push(set);
       } else if (method === "PUT") {
-        if (state.workout.activeSets.length < 3)
+        if (
+          state.workout.activeSets.length <
+          Math.min(
+            3,
+            state.workout.plan
+              .filter((e) => e.templateId === state.workout.active?.templateId)
+              .reduce((n, e) => n + e.sets, 0),
+          )
+        )
           throw Error("Log three sets first");
         const eligible = state.game.stats.todayWorkouts === 0;
         state.game.stats.todayWorkouts++;
@@ -645,10 +664,72 @@ export async function demoApi(
     case "coach": {
       const text = String(v.message),
         lower = text.toLowerCase();
+      let components: CoachMessage["components"] = [];
       let proposal: CoachMessage["proposal"] = null;
       let content =
         "Thanks for sharing. In the real app your coach uses your profile and history. This demo can suggest exercises, nutrition targets, or a habit—try asking about one.";
-      if (/exercise|workout|training|تمرين|تمارين/.test(lower)) {
+      if (/treadmill|cardio|interval|بلانك|كارديو|مشي/.test(lower)) {
+        proposal = {
+          type: "training",
+          plan: {
+            rationale:
+              "Demo mixed cardio and holds, using time instead of repetitions.",
+            days: [
+              {
+                name: "Cardio & core",
+                exercises: [
+                  {
+                    name: "Treadmill walk",
+                    muscleGroup: "Cardio",
+                    tracking: "duration",
+                    sets: 1,
+                    durationSeconds: 1200,
+                    speedKph: 5,
+                    inclinePercent: 2,
+                  },
+                  {
+                    name: "Plank",
+                    muscleGroup: "Core",
+                    tracking: "intervals",
+                    sets: 3,
+                    durationSeconds: 30,
+                    restSeconds: 30,
+                  },
+                ],
+              },
+            ],
+          },
+        };
+        content =
+          "Here is a demo time-based plan. Review it before applying. The timer and checklist do not save workout logs.";
+        components = [
+          {
+            type: "exercise",
+            title: "Plank technique",
+            steps: [
+              "Place elbows below shoulders",
+              "Keep hips aligned with shoulders and heels",
+              "Breathe steadily; stop if you feel pain",
+            ],
+          },
+          {
+            type: "timer",
+            title: "Plank intervals",
+            workSeconds: 30,
+            restSeconds: 30,
+            rounds: 3,
+          },
+          {
+            type: "checklist",
+            title: "Before treadmill walking",
+            items: [
+              "Attach the safety clip",
+              "Start at a comfortable speed",
+              "Keep water nearby",
+            ],
+          },
+        ];
+      } else if (/exercise|workout|training|تمرين|تمارين/.test(lower)) {
         proposal = {
           type: "training",
           plan: {
@@ -711,6 +792,7 @@ export async function demoApi(
         id: "a-" + Date.now(),
         role: "assistant",
         content,
+        components,
         proposal,
         status: proposal ? "pending" : "none",
       };
@@ -732,8 +814,16 @@ export async function demoApi(
               exerciseId: "coach-exercise-" + i + "-" + j,
               exerciseName: e.name,
               sets: e.sets,
-              repMin: e.repMin,
-              repMax: e.repMax,
+              repMin: e.repMin ?? null,
+              repMax: e.repMax ?? null,
+              tracking: e.tracking ?? "reps",
+              targets: {
+                durationSeconds: e.durationSeconds,
+                distanceMeters: e.distanceMeters,
+                restSeconds: e.restSeconds,
+                speedKph: e.speedKph,
+                inclinePercent: e.inclinePercent,
+              },
             })),
           );
         if (p.type === "targets")

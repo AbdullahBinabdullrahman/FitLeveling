@@ -76,7 +76,7 @@ export default function TrainingWorkspace({
     dayIndex: number,
     exerciseIndex: number,
     key: string,
-    value: string | number,
+    value: string | number | null | undefined,
   ) {
     setPlan(
       (p) =>
@@ -279,24 +279,127 @@ export default function TrainingWorkspace({
                         }
                       />
                     </label>
-                    {(["sets", "repMin", "repMax"] as const).map((k) => (
-                      <label className="field" key={k}>
-                        {k === "sets"
-                          ? "Sets"
-                          : k === "repMin"
-                            ? "Min reps"
-                            : "Max reps"}
-                        <input
-                          type="number"
-                          min="1"
-                          max={k === "sets" ? 6 : 30}
-                          value={e[k]}
-                          onChange={(v) =>
-                            edit(i, j, k, Number(v.target.value))
+                    <label className="field">
+                      Tracking
+                      <select
+                        value={e.tracking ?? "reps"}
+                        onChange={(v) => {
+                          const tracking = v.target.value;
+                          setPlan(
+                            (p) =>
+                              p && {
+                                ...p,
+                                days: p.days.map((day, di) =>
+                                  di !== i
+                                    ? day
+                                    : {
+                                        ...day,
+                                        exercises: day.exercises.map(
+                                          (ex, ei) =>
+                                            ei !== j
+                                              ? ex
+                                              : {
+                                                  ...ex,
+                                                  tracking:
+                                                    tracking as typeof ex.tracking,
+                                                  repMin:
+                                                    tracking === "reps"
+                                                      ? 8
+                                                      : null,
+                                                  repMax:
+                                                    tracking === "reps"
+                                                      ? 12
+                                                      : null,
+                                                  durationSeconds:
+                                                    tracking === "duration" ||
+                                                    tracking === "intervals"
+                                                      ? 60
+                                                      : undefined,
+                                                  distanceMeters:
+                                                    tracking === "distance"
+                                                      ? 1000
+                                                      : undefined,
+                                                  restSeconds:
+                                                    tracking === "intervals"
+                                                      ? 30
+                                                      : undefined,
+                                                },
+                                        ),
+                                      },
+                                ),
+                              },
+                          );
+                        }}
+                      >
+                        <option value="reps">Reps</option>
+                        <option value="duration">Time / hold</option>
+                        <option value="distance">Distance</option>
+                        <option value="intervals">Intervals</option>
+                      </select>
+                    </label>
+                    {(e.tracking && e.tracking !== "reps"
+                      ? [
+                          "sets",
+                          ...(e.tracking === "distance"
+                            ? ["distanceMeters"]
+                            : ["durationSeconds"]),
+                          ...(e.tracking === "intervals"
+                            ? ["restSeconds"]
+                            : []),
+                          "speedKph",
+                          "inclinePercent",
+                        ]
+                      : ["sets", "repMin", "repMax"]
+                    ).map((key) => {
+                      const k = key as
+                        | "sets"
+                        | "repMin"
+                        | "repMax"
+                        | "durationSeconds"
+                        | "distanceMeters"
+                        | "restSeconds"
+                        | "speedKph"
+                        | "inclinePercent";
+                      return (
+                        <label className="field" key={k}>
+                          {
+                            {
+                              sets: "Sets / blocks / rounds",
+                              repMin: "Minimum reps",
+                              repMax: "Maximum reps",
+                              durationSeconds: "Duration (seconds)",
+                              distanceMeters: "Distance (meters)",
+                              restSeconds: "Rest (seconds)",
+                              speedKph: "Speed (km/h)",
+                              inclinePercent: "Incline (%)",
+                            }[k]
                           }
-                        />
-                      </label>
-                    ))}
+                          <input
+                            type="number"
+                            min={
+                              k === "inclinePercent"
+                                ? -20
+                                : k === "restSeconds"
+                                  ? 0
+                                  : 1
+                            }
+                            step="any"
+                            max={k === "sets" ? 20 : undefined}
+                            value={e[k] ?? ""}
+                            onChange={(v) =>
+                              edit(
+                                i,
+                                j,
+                                k,
+                                v.target.value === ""
+                                  ? undefined
+                                  : Number(v.target.value),
+                              )
+                            }
+                          />
+                        </label>
+                      );
+                    })}
                     <button
                       className="ghost"
                       aria-label={`Remove ${e.name || "exercise"}`}
@@ -336,6 +439,7 @@ export default function TrainingWorkspace({
                                   name: "",
                                   muscleGroup: "",
                                   sets: 3,
+                                  tracking: "reps",
                                   repMin: 8,
                                   repMax: 12,
                                 },
@@ -366,6 +470,7 @@ export default function TrainingWorkspace({
                             name: "",
                             muscleGroup: "",
                             sets: 3,
+                            tracking: "reps",
                             repMin: 8,
                             repMax: 12,
                           },

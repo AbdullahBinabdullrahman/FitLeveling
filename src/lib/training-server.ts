@@ -70,11 +70,16 @@ export async function trainingContext(userId: string) {
           sets: templateExercises.sets,
           repMin: templateExercises.repMin,
           repMax: templateExercises.repMax,
+          tracking: templateExercises.tracking,
+          targets: templateExercises.targets,
         })
         .from(templateExercises)
         .innerJoin(exercises, eq(exercises.id, templateExercises.exerciseId))
         .where(eq(templateExercises.templateId, t.id))
-        .orderBy(templateExercises.position),
+        .orderBy(templateExercises.position)
+        .then((rows) =>
+          rows.map(({ targets, ...row }) => ({ ...row, ...targets })),
+        ),
     })),
   );
   return {
@@ -130,8 +135,17 @@ export async function applyTraining(
         exerciseId: exercise.id,
         position,
         sets: e.sets,
-        repMin: e.repMin,
-        repMax: e.repMax,
+        repMin: e.repMin ?? null,
+        repMax: e.repMax ?? null,
+        tracking: e.tracking,
+        targets: {
+          durationSeconds: e.durationSeconds,
+          distanceMeters: e.distanceMeters,
+          speedKph: e.speedKph,
+          inclinePercent: e.inclinePercent,
+          restSeconds: e.restSeconds,
+          notes: e.notes,
+        },
       });
     }
   }

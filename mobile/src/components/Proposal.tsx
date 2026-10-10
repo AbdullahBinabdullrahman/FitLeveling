@@ -1,3 +1,4 @@
+import { exerciseSummary } from "../lib/training-metrics";
 import type { Proposal as Data } from "../lib/types";
 import { View } from "react-native";
 import { Heading, Body, Button, Row } from "./ui";
@@ -36,7 +37,7 @@ export default function Proposal({
               <Heading>{d.name}</Heading>
               {d.exercises.map((e, j) => (
                 <Body key={j}>
-                  {e.name} · {e.sets} × {e.repMin}–{e.repMax}
+                  {e.name} · {exerciseSummary(e)}
                 </Body>
               ))}
             </View>

@@ -120,3 +120,51 @@ describe("Account validation", () => {
     ).toBe(false);
   });
 });
+
+describe("structured coach cards", () => {
+  it("accepts demonstrations, timers and checklists without a mutation", () => {
+    const result = parseCoachResponse(
+      JSON.stringify({
+        reply: "Try this warmup",
+        proposal: null,
+        components: [
+          {
+            type: "exercise",
+            title: "Warmup",
+            steps: ["Stand tall", "March gently"],
+          },
+          {
+            type: "timer",
+            title: "Intervals",
+            workSeconds: 30,
+            restSeconds: 30,
+            rounds: 4,
+          },
+          { type: "checklist", title: "Preparation", items: ["Check shoes"] },
+        ],
+      }),
+    );
+    expect(result.proposal).toBeNull();
+    expect("components" in result && result.components?.length).toBe(3);
+  });
+  it("rejects executable cards and unbounded timers", () => {
+    expect(() =>
+      parseCoachResponse(
+        JSON.stringify({
+          reply: "Hi",
+          components: [{ type: "script", code: "alert(1)" }],
+        }),
+      ),
+    ).toThrow();
+    expect(() =>
+      parseCoachResponse(
+        JSON.stringify({
+          reply: "Hi",
+          components: [
+            { type: "timer", title: "Bad", workSeconds: -1, rounds: 100000 },
+          ],
+        }),
+      ),
+    ).toThrow();
+  });
+});

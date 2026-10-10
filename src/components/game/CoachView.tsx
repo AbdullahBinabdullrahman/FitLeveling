@@ -19,6 +19,8 @@ import type { GameData } from "@/lib/game";
 import Character from "./Character";
 import CoachProposalCard from "./CoachProposalCard";
 import type { CoachProposal } from "@/lib/coach-actions";
+import CoachComponents from "./CoachComponents";
+import type { CoachComponent } from "@/lib/coach-components";
 import TrainingWorkspace from "./TrainingWorkspace";
 
 type Settings = {
@@ -36,6 +38,7 @@ type Message = {
   id?: string;
   role: "user" | "assistant";
   content: string;
+  components?: CoachComponent[];
   proposal?: CoachProposal | null;
   status?: string;
 };
@@ -538,6 +541,7 @@ export default function CoachView({
                   </span>
                 )}
                 <p>{m.content}</p>
+                <CoachComponents cards={m.components} />
                 {m.proposal && m.id && (
                   <CoachProposalCard
                     proposal={m.proposal}

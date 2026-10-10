@@ -1,3 +1,4 @@
+import type { Targets, Tracking } from "./training-metrics";
 export type Character = {
   name: string;
   archetype: string;
@@ -58,8 +59,9 @@ export type Workout = {
   }[];
   past?: {
     exerciseId: string;
-    weightKg: string;
-    reps: number;
+    weightKg: string | null;
+    reps: number | null;
+    metrics?: Targets;
     completedAt: string;
   }[];
   plan: {
@@ -68,15 +70,18 @@ export type Workout = {
     exerciseId: string;
     exerciseName: string;
     sets: number;
-    repMin: number;
-    repMax: number;
+    repMin: number | null;
+    repMax: number | null;
+    tracking?: Tracking;
+    targets?: Targets;
   }[];
   active: { id: string; templateId: string } | null;
   activeSets: {
     exerciseId: string;
     setNumber: number;
-    weightKg: string;
-    reps: number;
+    weightKg: string | null;
+    reps: number | null;
+    metrics?: Targets;
   }[];
   profile: Profile;
 };
@@ -91,8 +96,15 @@ export type Proposal =
             name: string;
             muscleGroup: string;
             sets: number;
-            repMin: number;
-            repMax: number;
+            repMin?: number | null;
+            repMax?: number | null;
+            tracking?: Tracking;
+            durationSeconds?: number;
+            distanceMeters?: number;
+            speedKph?: number;
+            inclinePercent?: number;
+            restSeconds?: number;
+            notes?: string;
           }[];
         }[];
       };
@@ -112,6 +124,7 @@ export type CoachMessage = {
   id: string;
   role: "user" | "assistant";
   content: string;
+  components?: import("./coach-components").CoachComponent[];
   proposal: Proposal | null;
   status: string;
 };

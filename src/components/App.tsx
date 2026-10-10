@@ -1,4 +1,9 @@
 "use client";
+import {
+  exerciseSummary,
+  type Targets,
+  type Tracking,
+} from "@/lib/training-metrics";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Dumbbell,
@@ -59,8 +64,10 @@ type Plan = {
   exerciseName: string;
   position: number;
   sets: number;
-  repMin: number;
-  repMax: number;
+  repMin: number | null;
+  repMax: number | null;
+  tracking?: Tracking;
+  targets?: Targets;
 };
 type Workout = {
   plan: Plan[];
@@ -70,8 +77,9 @@ type Workout = {
   activeSets: {
     exerciseId: string;
     setNumber: number;
-    weightKg: string;
-    reps: number;
+    weightKg: string | null;
+    reps: number | null;
+    metrics?: Targets;
   }[];
   past: { exerciseId: string; weightKg: string; reps: number }[];
 };
@@ -610,7 +618,7 @@ function Train({
   const chosen = session?.templateId ?? selected ?? plans[0]?.[0];
   const items = data?.plan.filter((p) => p.templateId === chosen) ?? [];
   const [values, setValues] = useState<
-    Record<string, { weightKg: number; reps: number }>
+    Record<string, { weightKg: number; reps: number; metrics?: Targets }>
   >({});
   const [pending, setPending] = useState<string | null>(null);
   const [restToken, setRestToken] = useState(0);
@@ -686,7 +694,14 @@ function Train({
           </div>
           <button
             className="btn"
-            disabled={!!pending || savedSets < 3}
+            disabled={
+              !!pending ||
+              savedSets <
+                Math.min(
+                  3,
+                  items.reduce((n, e) => n + e.sets, 0),
+                )
+            }
             onClick={() =>
               run("complete", async () => {
                 const result = await api<{
@@ -748,7 +763,7 @@ function Train({
           <p className="muted text-sm mt-2">
             {session
               ? "Every logged set brings this mission closer to completion. Rest when you need it."
-              : "Bring your equipped gear. Complete at least three sets to finish the mission and collect your rewards."}
+              : "Bring your equipped gear. Complete at least three sets, or every block in a shorter workout, to finish the mission and collect your rewards."}
           </p>
           <div className="flex flex-wrap gap-3 mt-3">
             <span className="soft-badge">100 base XP</span>
@@ -773,19 +788,27 @@ function Train({
             <div className="flex flex-wrap justify-between gap-2">
               <h3 className="text-xl font-bold">{item.exerciseName}</h3>
               <span className="label">
-                {item.sets} × {item.repMin}–{item.repMax}
+                {exerciseSummary({ ...item, ...item.targets })}
               </span>
             </div>
-            <p className="muted my-3 text-sm">
-              Previous logged weight:{" "}
-              {data?.past.find((p) => p.exerciseId === item.exerciseId)
-                ?.weightKg ?? "—"}{" "}
-              kg
-            </p>
+            {(!item.tracking || item.tracking === "reps") && (
+              <p className="muted my-3 text-sm">
+                Previous logged weight:{" "}
+                {data?.past.find((p) => p.exerciseId === item.exerciseId)
+                  ?.weightKg ?? "—"}{" "}
+                kg
+              </p>
+            )}
             <div className="mb-2 grid grid-cols-[30px_1fr_1fr_80px] gap-2 text-xs text-slate-400">
               <span>Set</span>
-              <span>Weight (kg)</span>
-              <span>Reps</span>
+              <span>
+                {item.tracking && item.tracking !== "reps"
+                  ? "Activity metrics"
+                  : "Weight (kg)"}
+              </span>
+              <span>
+                {item.tracking && item.tracking !== "reps" ? "" : "Reps"}
+              </span>
               <span className="text-center">Log</span>
             </div>
             <div className="space-y-2">
@@ -802,7 +825,8 @@ function Train({
                         ?.weightKg ??
                       0,
                   ),
-                  reps: saved?.reps ?? item.repMin,
+                  reps: saved?.reps ?? item.repMin ?? 8,
+                  metrics: saved?.metrics ?? item.targets ?? {},
                 };
                 const done = completed.has(key);
                 return (
@@ -811,35 +835,98 @@ function Train({
                     key={key}
                   >
                     <span className="muted">{n + 1}</span>
-                    <input
-                      aria-label={`${item.exerciseName} set ${n + 1} weight kg`}
-                      type="number"
-                      min="0"
-                      max="500"
-                      step="0.5"
-                      value={value.weightKg}
-                      disabled={!!pending}
-                      onChange={(e) =>
-                        setValues({
-                          ...values,
-                          [key]: { ...value, weightKg: Number(e.target.value) },
-                        })
-                      }
-                    />
-                    <input
-                      aria-label={`${item.exerciseName} set ${n + 1} reps`}
-                      type="number"
-                      min="1"
-                      max="100"
-                      value={value.reps}
-                      disabled={!!pending}
-                      onChange={(e) =>
-                        setValues({
-                          ...values,
-                          [key]: { ...value, reps: Number(e.target.value) },
-                        })
-                      }
-                    />
+                    {!item.tracking || item.tracking === "reps" ? (
+                      <>
+                        <input
+                          aria-label={`${item.exerciseName} set ${n + 1} weight kg`}
+                          type="number"
+                          min="0"
+                          max="500"
+                          step="0.5"
+                          value={value.weightKg}
+                          disabled={!!pending}
+                          onChange={(e) =>
+                            setValues({
+                              ...values,
+                              [key]: {
+                                ...value,
+                                weightKg: Number(e.target.value),
+                              },
+                            })
+                          }
+                        />
+                        <input
+                          aria-label={`${item.exerciseName} set ${n + 1} reps`}
+                          type="number"
+                          min="1"
+                          max="100"
+                          value={value.reps}
+                          disabled={!!pending}
+                          onChange={(e) =>
+                            setValues({
+                              ...values,
+                              [key]: { ...value, reps: Number(e.target.value) },
+                            })
+                          }
+                        />
+                      </>
+                    ) : (
+                      <div className="col-span-2 flex flex-wrap gap-2">
+                        {(item.tracking === "distance"
+                          ? [
+                              "distanceMeters",
+                              "durationSeconds",
+                              "speedKph",
+                              "inclinePercent",
+                            ]
+                          : item.tracking === "intervals"
+                            ? ["durationSeconds", "restSeconds"]
+                            : [
+                                "durationSeconds",
+                                "distanceMeters",
+                                "speedKph",
+                                "inclinePercent",
+                              ]
+                        ).map((key) => (
+                          <label className="field" key={key}>
+                            {
+                              (
+                                {
+                                  durationSeconds: "Duration (seconds)",
+                                  distanceMeters: "Distance (meters)",
+                                  speedKph: "Speed (km/h)",
+                                  inclinePercent: "Incline (%)",
+                                  restSeconds: "Rest (seconds)",
+                                } as Record<string, string>
+                              )[key]
+                            }
+                            <input
+                              type="number"
+                              step="any"
+                              value={
+                                value.metrics?.[key as keyof Targets] ?? ""
+                              }
+                              disabled={!!pending}
+                              onChange={(event) =>
+                                setValues({
+                                  ...values,
+                                  [`${item.exerciseId}:${n + 1}`]: {
+                                    ...value,
+                                    metrics: {
+                                      ...value.metrics,
+                                      [key]:
+                                        event.target.value === ""
+                                          ? undefined
+                                          : Number(event.target.value),
+                                    },
+                                  },
+                                })
+                              }
+                            />
+                          </label>
+                        ))}
+                      </div>
+                    )}
                     <button
                       className={done ? "btn" : "ghost"}
                       disabled={!session || !!pending}
@@ -849,7 +936,9 @@ function Train({
                             sessionId: session!.id,
                             exerciseId: item.exerciseId,
                             setNumber: n + 1,
-                            ...value,
+                            ...(item.tracking && item.tracking !== "reps"
+                              ? { metrics: value.metrics }
+                              : { weightKg: value.weightKg, reps: value.reps }),
                           }),
                         );
                         if (ok && !done) setRestToken((t) => t + 1);

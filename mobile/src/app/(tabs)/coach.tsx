@@ -21,6 +21,7 @@ import {
   useTask,
   colors,
 } from "../../components/ui";
+import CoachComponents from "../../components/CoachComponents";
 import Proposal from "../../components/Proposal";
 export default function Coach() {
   const q = useApi<{ messages: CoachMessage[] }>("coach"),
@@ -114,6 +115,7 @@ export default function Coach() {
                 {item.role === "user" ? "You" : "Coach"}
               </Text>
               <Body>{item.content}</Body>
+              <CoachComponents cards={item.components} />
               {item.proposal && (
                 <Proposal
                   data={item.proposal}

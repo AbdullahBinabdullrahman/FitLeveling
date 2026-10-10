@@ -67,8 +67,13 @@ export const templateExercises = pgTable("template_exercises", {
     .notNull(),
   position: integer("position").notNull(),
   sets: integer("sets").default(3).notNull(),
-  repMin: integer("rep_min").notNull(),
-  repMax: integer("rep_max").notNull(),
+  repMin: integer("rep_min"),
+  repMax: integer("rep_max"),
+  tracking: text("tracking").default("reps").notNull(),
+  targets: jsonb("targets")
+    .$type<import("@/lib/training-metrics").Targets>()
+    .default({})
+    .notNull(),
 });
 export const sessions = pgTable("workout_sessions", {
   id: id(),
@@ -93,8 +98,12 @@ export const sets = pgTable(
       .references(() => exercises.id)
       .notNull(),
     setNumber: integer("set_number").notNull(),
-    weightKg: numeric("weight_kg").notNull(),
-    reps: integer("reps").notNull(),
+    weightKg: numeric("weight_kg"),
+    reps: integer("reps"),
+    metrics: jsonb("metrics")
+      .$type<import("@/lib/training-metrics").Targets>()
+      .default({})
+      .notNull(),
     completedAt: created(),
   },
   (t) => [
@@ -397,6 +406,7 @@ export const coachMessages = pgTable(
     role: text("role").notNull(),
     content: text("content").notNull(),
     proposal: jsonb("proposal"),
+    components: jsonb("components").default([]).notNull(),
     base: jsonb("base"),
     status: text("status").notNull().default("pending"),
     createdAt: created(),

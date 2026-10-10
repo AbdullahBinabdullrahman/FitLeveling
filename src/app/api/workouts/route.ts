@@ -31,6 +31,8 @@ export async function GET() {
           sets: templateExercises.sets,
           repMin: templateExercises.repMin,
           repMax: templateExercises.repMax,
+          tracking: templateExercises.tracking,
+          targets: templateExercises.targets,
         })
         .from(templateExercises)
         .innerJoin(templates, eq(templates.id, templateExercises.templateId))
@@ -60,6 +62,8 @@ export async function GET() {
         sets: templateExercises.sets,
         repMin: templateExercises.repMin,
         repMax: templateExercises.repMax,
+        tracking: templateExercises.tracking,
+        targets: templateExercises.targets,
       })
       .from(templateExercises)
       .innerJoin(templates, eq(templates.id, templateExercises.templateId))
@@ -71,6 +75,7 @@ export async function GET() {
         exerciseId: sets.exerciseId,
         weightKg: sets.weightKg,
         reps: sets.reps,
+        metrics: sets.metrics,
         completedAt: sets.completedAt,
       })
       .from(sets)
@@ -89,6 +94,8 @@ export async function GET() {
             sets: templateExercises.sets,
             repMin: templateExercises.repMin,
             repMax: templateExercises.repMax,
+            tracking: templateExercises.tracking,
+            targets: templateExercises.targets,
           })
           .from(templateExercises)
           .innerJoin(templates, eq(templates.id, templateExercises.templateId))
@@ -153,8 +160,17 @@ const setInput = z.object({
   sessionId: z.uuid(),
   exerciseId: z.uuid(),
   setNumber: z.number().int().min(1).max(20),
-  weightKg: z.number().min(0).max(500),
-  reps: z.number().int().min(1).max(100),
+  weightKg: z.number().min(0).max(500).optional(),
+  reps: z.number().int().min(1).max(100).optional(),
+  metrics: z
+    .object({
+      durationSeconds: z.number().int().min(1).max(86400).optional(),
+      distanceMeters: z.number().min(1).max(500000).optional(),
+      speedKph: z.number().min(0.1).max(100).optional(),
+      inclinePercent: z.number().min(-20).max(40).optional(),
+      restSeconds: z.number().int().min(0).max(3600).optional(),
+    })
+    .default({}),
 });
 export async function PATCH(request: NextRequest) {
   try {
@@ -181,18 +197,36 @@ export async function PATCH(request: NextRequest) {
         ),
       );
     if (!allowed || v.setNumber > allowed.sets) throw new Error("Invalid set");
+    if (allowed.tracking === "reps" && !v.reps)
+      throw new Error("Enter repetitions");
+    if (allowed.tracking === "distance" && !v.metrics.distanceMeters)
+      throw new Error("Enter distance");
+    if (
+      ["duration", "intervals"].includes(allowed.tracking) &&
+      !v.metrics.durationSeconds
+    )
+      throw new Error("Enter duration");
+    if (allowed.tracking !== "reps" && (v.reps != null || v.weightKg != null))
+      throw new Error(
+        "This exercise uses time or distance, not reps or weight",
+      );
     await db
       .insert(sets)
       .values({
         sessionId: v.sessionId,
         exerciseId: v.exerciseId,
         setNumber: v.setNumber,
-        weightKg: String(v.weightKg),
-        reps: v.reps,
+        weightKg: v.weightKg == null ? null : String(v.weightKg),
+        reps: v.reps ?? null,
+        metrics: v.metrics,
       })
       .onConflictDoUpdate({
         target: [sets.sessionId, sets.exerciseId, sets.setNumber],
-        set: { weightKg: String(v.weightKg), reps: v.reps },
+        set: {
+          weightKg: v.weightKg == null ? null : String(v.weightKg),
+          reps: v.reps ?? null,
+          metrics: v.metrics,
+        },
       });
     return NextResponse.json({ ok: true });
   } catch (e) {
@@ -218,12 +252,13 @@ export async function PUT(request: NextRequest) {
         .select()
         .from(sets)
         .where(eq(sets.sessionId, sessionId));
-      if (logged.length < 3) throw new Error("Log at least three sets");
+      if (!logged.length) throw new Error("Log at least one exercise block");
       const older = await tx
         .select({
           exerciseId: sets.exerciseId,
           weightKg: sets.weightKg,
           reps: sets.reps,
+          metrics: sets.metrics,
         })
         .from(sets)
         .innerJoin(sessions, eq(sets.sessionId, sessions.id))
@@ -243,14 +278,14 @@ export async function PUT(request: NextRequest) {
           s.exerciseId,
           Math.max(
             best.get(s.exerciseId) ?? 0,
-            Number(s.weightKg) * (1 + s.reps / 30),
+            Number(s.weightKg) * (1 + (s.reps ?? 0) / 30),
           ),
         );
       const prs = new Set(
         logged
           .filter(
             (s) =>
-              Number(s.weightKg) * (1 + s.reps / 30) >
+              Number(s.weightKg) * (1 + (s.reps ?? 0) / 30) >
               (best.get(s.exerciseId) ?? 0),
           )
           .map((s) => s.exerciseId),
@@ -259,6 +294,16 @@ export async function PUT(request: NextRequest) {
         .select()
         .from(templateExercises)
         .where(eq(templateExercises.templateId, session.templateId));
+      if (
+        logged.length <
+        Math.min(
+          3,
+          plan.reduce((n, p) => n + p.sets, 0),
+        )
+      )
+        throw new Error(
+          "Log at least three sets, or every block in a shorter workout",
+        );
       const complete = logged.length >= plan.reduce((n, p) => n + p.sets, 0);
       let xp = 100 + (complete ? 25 : 0) + Math.min(prs, 3) * 30;
       let coins = 20 + Math.min(prs, 3) * 10;

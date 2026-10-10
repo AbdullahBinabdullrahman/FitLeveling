@@ -1,3 +1,4 @@
+import { coachComponentsSchema } from "./coach-components";
 import { z } from "zod";
 import { planSchema } from "./training";
 import { tagsSchema } from "./interests";
@@ -58,6 +59,7 @@ export function parseCoachResponse(raw: string) {
     .object({
       reply: z.string().trim().min(1).max(6000),
       proposal: z.unknown().optional(),
+      components: coachComponentsSchema.optional(),
     })
     .safeParse(value);
   const summarize = (issues: z.core.$ZodIssue[]) =>
@@ -68,7 +70,14 @@ export function parseCoachResponse(raw: string) {
   if (!envelope.success)
     throw new CoachResponseError(summarize(envelope.error.issues));
   if (envelope.data.proposal == null)
-    return { reply: envelope.data.reply, proposal: null, issues: [] };
+    return {
+      reply: envelope.data.reply,
+      ...(envelope.data.components?.length
+        ? { components: envelope.data.components }
+        : {}),
+      proposal: null,
+      issues: [],
+    };
   const proposal = coachProposalSchema.safeParse(envelope.data.proposal);
   if (!proposal.success)
     return {
@@ -76,7 +85,14 @@ export function parseCoachResponse(raw: string) {
       proposal: null,
       issues: summarize(proposal.error.issues),
     };
-  return { reply: envelope.data.reply, proposal: proposal.data, issues: [] };
+  return {
+    reply: envelope.data.reply,
+    ...(envelope.data.components?.length
+      ? { components: envelope.data.components }
+      : {}),
+    proposal: proposal.data,
+    issues: [],
+  };
 }
 export function assertFresh(status: string, createdAt: Date, now = new Date()) {
   if (status !== "pending")

@@ -1,4 +1,5 @@
 "use client";
+import { exerciseSummary } from "@/lib/training-metrics";
 import type { CoachProposal } from "@/lib/coach-actions";
 export default function CoachProposalCard({
   proposal,
@@ -32,7 +33,7 @@ export default function CoachProposalCard({
                 <ul>
                   {d.exercises.map((e, j) => (
                     <li key={j}>
-                      {e.name} · {e.sets} sets × {e.repMin}–{e.repMax} reps
+                      {e.name} · {exerciseSummary(e)}
                     </li>
                   ))}
                 </ul>
